@@ -1,0 +1,28 @@
+# =====================================================================================
+# STREAMLIT THEME CONFIGURATION
+# =====================================================================================
+# This file defines a custom theme for the Streamlit application, inspired by the
+# corporate branding of AT&S.
+#
+# For more information on theming, see the Streamlit documentation:
+# https://docs.streamlit.io/library/advanced-features/theming
+# =====================================================================================
+
+[theme]
+
+# The primary color for interactive elements like buttons, sliders, etc.
+# This is a corporate blue inspired by the AT&S logo.
+primaryColor = "#004488"
+
+# The main background color of the application.
+backgroundColor = "#FFFFFF"
+
+# The background color for elements like the sidebar and expanded sections.
+secondaryBackgroundColor = "#F0F2F6"
+
+# The default color for all text in the application.
+textColor = "#31333F"
+
+# The font family for the application.
+# Options: "sans serif", "serif", or "monospace"
+font = "sans serif"

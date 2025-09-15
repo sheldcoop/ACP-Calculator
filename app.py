@@ -63,12 +63,14 @@ def main():
 
     # --- Tab 2: Module 3 Corrector ---
     with tab2:
-        # Render UI, get inputs, and pass them to the calculation function.
+        # Render UI form and get user inputs.
         module3_inputs = render_module3_ui()
-        correction_result = calculate_module3_correction(**module3_inputs)
-        st.markdown("---")
-        # Display the results.
-        display_module3_correction(correction_result)
+        # Only perform calculation and display results if the form has been submitted.
+        if module3_inputs["submitted"]:
+            correction_result = calculate_module3_correction(**module3_inputs)
+            st.markdown("---")
+            # Display the results.
+            display_module3_correction(correction_result)
 
     # --- Tab 3: Module 3 Sandbox ---
     with tab3:
@@ -91,22 +93,24 @@ def main():
 
     # --- Tab 4: Module 7 Corrector ---
     with tab4:
-        # Render UI, get inputs, and add target values from config.
+        # Render UI form and get user inputs.
         auto_inputs = render_module7_corrector_ui()
-        auto_args = {
-            "current_volume": auto_inputs['current_volume'],
-            "current_cond_ml_l": auto_inputs['current_cond'],
-            "current_cu_g_l": auto_inputs['current_cu'],
-            "current_h2o2_ml_l": auto_inputs['current_h2o2'],
-            "target_cond_ml_l": MODULE7_TARGET_CONDITION_ML_L,
-            "target_cu_g_l": MODULE7_TARGET_CU_ETCH_G_L,
-            "target_h2o2_ml_l": MODULE7_TARGET_H2O2_ML_L,
-            "module7_total_volume": MODULE7_TOTAL_VOLUME
-        }
-        auto_correction_result = calculate_module7_correction(**auto_args)
-        st.markdown("---")
-        # Display the results.
-        display_module7_correction(auto_correction_result)
+        # Only perform calculation and display results if the form has been submitted.
+        if auto_inputs["submitted"]:
+            auto_args = {
+                "current_volume": auto_inputs['current_volume'],
+                "current_cond_ml_l": auto_inputs['current_cond'],
+                "current_cu_g_l": auto_inputs['current_cu'],
+                "current_h2o2_ml_l": auto_inputs['current_h2o2'],
+                "target_cond_ml_l": MODULE7_TARGET_CONDITION_ML_L,
+                "target_cu_g_l": MODULE7_TARGET_CU_ETCH_G_L,
+                "target_h2o2_ml_l": MODULE7_TARGET_H2O2_ML_L,
+                "module7_total_volume": MODULE7_TOTAL_VOLUME
+            }
+            auto_correction_result = calculate_module7_correction(**auto_args)
+            st.markdown("---")
+            # Display the results.
+            display_module7_correction(auto_correction_result)
 
     # --- Tab 5: Module 7 Sandbox ---
     with tab5:

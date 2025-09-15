@@ -15,8 +15,60 @@ from .config import (
     DEFAULT_TARGET_A_ML_L,
     DEFAULT_TARGET_B_ML_L,
     MODULE3_TOTAL_VOLUME,
-    MODULE7_TOTAL_VOLUME
+    MODULE7_TOTAL_VOLUME,
+    MODULE7_TARGET_CONDITION_ML_L,
+    MODULE7_TARGET_CU_ETCH_G_L,
+    MODULE7_TARGET_H2O2_ML_L,
 )
+
+# --- UI Helper Functions ---
+
+def get_status_color(value: float, target: float, tolerance_pct: float = 5.0) -> str:
+    """Determines a status color based on deviation from a target.
+
+    Args:
+        value: The current value.
+        target: The target value.
+        tolerance_pct: The percentage tolerance for a 'good' status.
+
+    Returns:
+        A string representing the color ('green', 'orange', or 'red').
+    """
+    if target == 0:
+        return "green" if value == 0 else "red"
+
+    deviation = abs(value - target) / target * 100
+    if deviation <= tolerance_pct:
+        return "green"
+    elif deviation <= tolerance_pct * 2:
+        return "orange"
+    else:
+        return "red"
+
+def styled_metric(label: str, value: float, unit: str, target: float):
+    """Displays a metric with a visual status bar.
+
+    Args:
+        label: The label for the metric.
+        value: The value of the metric.
+        unit: The unit for the value.
+        target: The target value for calculating the status.
+    """
+    color = get_status_color(value, target)
+
+    st.markdown(f"**{label}**")
+    st.markdown(
+        f"""
+        <div style="display: flex; align-items: center;">
+            <div style="width: 10px; height: 30px; background-color: {color}; margin-right: 10px; border-radius: 2px;"></div>
+            <div>
+                <span style="font-size: 1.5em; font-weight: bold;">{value:.2f}</span>
+                <span style="font-size: 0.9em; color: #888; margin-left: 5px;">{unit}</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # --- Tab 1: Makeup Tank Refill ---
 
@@ -65,18 +117,18 @@ def display_makeup_recipe(recipe: Dict[str, Any]):
     Args:
         recipe: A dictionary containing the calculated results from the backend.
     """
-    st.header("3. Refill & Correction Recipe")
-    if recipe.get("error"):
-        st.error(f"❌ {recipe['error']}")
-        return
+    with st.expander("View Refill & Correction Recipe", expanded=True):
+        if recipe.get("error"):
+            st.error(f"❌ {recipe['error']}")
+            return
 
-    add_a, add_b, add_water = recipe["add_a"], recipe["add_b"], recipe["add_water"]
-    total_added = add_a + add_b + add_water
-    col1, col2, col3 = st.columns(3)
-    col1.metric("1. Add Pure Chemical A", f"{add_a:.2f} L")
-    col2.metric("2. Add Pure Chemical B", f"{add_b:.2f} L")
-    col3.metric("3. Add Water", f"{add_water:.2f} L")
-    st.info(f"Total volume to be added: **{total_added:.2f} L**")
+        add_a, add_b, add_water = recipe["add_a"], recipe["add_b"], recipe["add_water"]
+        total_added = add_a + add_b + add_water
+        col1, col2, col3 = st.columns(3)
+        col1.metric("1. Add Pure Chemical A", f"{add_a:.2f} L")
+        col2.metric("2. Add Pure Chemical B", f"{add_b:.2f} L")
+        col3.metric("3. Add Water", f"{add_water:.2f} L")
+        st.info(f"Total volume to be added: **{total_added:.2f} L**")
 
 # --- Tab 2: Module 3 Corrector ---
 
@@ -87,19 +139,24 @@ def render_module3_ui() -> Dict[str, Any]:
         A dictionary containing all the user-defined input values for the correction.
     """
     st.header("1. Module 3 Current Status")
-    col1, col2, col3 = st.columns(3)
-    current_volume = col1.number_input(
-        "Current Volume in Module 3 (L)", min_value=0.0, max_value=MODULE3_TOTAL_VOLUME, value=180.0, step=10.0, key="mod3_corr_input_vol"
-    )
-    measured_conc_a = col2.number_input(
-        "Measured Conc. of A (ml/L)", min_value=0.0, value=150.0, step=1.0, format="%.1f", key="mod3_corr_input_a"
-    )
-    measured_conc_b = col3.number_input(
-        "Measured Conc. of B (ml/L)", min_value=0.0, value=45.0, step=1.0, format="%.1f", key="mod3_corr_input_b"
-    )
-    st.info(f"Target concentrations are **{DEFAULT_TARGET_A_ML_L} ml/L** for A and **{DEFAULT_TARGET_B_ML_L} ml/L** for B.")
+
+    with st.form(key="mod3_corr_form"):
+        col1, col2, col3 = st.columns(3)
+        current_volume = col1.number_input(
+            "Current Volume in Module 3 (L)", min_value=0.0, max_value=MODULE3_TOTAL_VOLUME, value=180.0, step=10.0, key="mod3_corr_input_vol"
+        )
+        measured_conc_a = col2.number_input(
+            "Measured Conc. of A (ml/L)", min_value=0.0, value=150.0, step=1.0, format="%.1f", key="mod3_corr_input_a"
+        )
+        measured_conc_b = col3.number_input(
+            "Measured Conc. of B (ml/L)", min_value=0.0, value=45.0, step=1.0, format="%.1f", key="mod3_corr_input_b"
+        )
+        st.info(f"Target concentrations are **{DEFAULT_TARGET_A_ML_L} ml/L** for A and **{DEFAULT_TARGET_B_ML_L} ml/L** for B.")
+
+        submitted = st.form_submit_button("Calculate Correction")
 
     return {
+        "submitted": submitted,
         "current_volume": current_volume,
         "measured_conc_a_ml_l": measured_conc_a,
         "measured_conc_b_ml_l": measured_conc_b,
@@ -114,29 +171,33 @@ def display_module3_correction(result: Dict[str, Any]):
     Args:
         result: A dictionary containing the calculated results from the backend.
     """
-    st.header("2. Recommended Correction")
-    status = result.get("status")
-    if status == "PERFECT":
-        st.success(f"✅ {result.get('message')}")
-        return
+    with st.expander("View Correction and Final State", expanded=True):
+        st.header("2. Recommended Correction")
+        status = result.get("status")
+        if status == "PERFECT":
+            st.success(f"✅ {result.get('message')}")
+            return
 
-    add_water, add_makeup = result.get("add_water", 0), result.get("add_makeup", 0)
+        add_water, add_makeup = result.get("add_water", 0), result.get("add_makeup", 0)
 
-    if status == "PERFECT_CORRECTION":
-        st.success("✅ A perfect correction is possible with the recipe below.")
-    elif status == "BEST_POSSIBLE_CORRECTION":
-        st.warning("⚠️ A perfect correction is not possible. The recipe below provides the best possible correction.")
+        if status == "PERFECT_CORRECTION":
+            st.success("✅ A perfect correction is possible with the recipe below.")
+        elif status == "BEST_POSSIBLE_CORRECTION":
+            st.warning("⚠️ A perfect correction is not possible. The recipe below provides the best possible correction.")
 
-    col1, col2 = st.columns(2)
-    col1.metric("Action: Add Makeup Solution", f"{add_makeup:.2f} L")
-    col2.metric("Action: Add Water", f"{add_water:.2f} L")
+        col1, col2 = st.columns(2)
+        col1.metric("Action: Add Makeup Solution", f"{add_makeup:.2f} L")
+        col2.metric("Action: Add Water", f"{add_water:.2f} L")
 
-    st.header("3. Final Predicted State")
-    final_volume, final_conc_a, final_conc_b = result.get("final_volume", 0), result.get("final_conc_a", 0), result.get("final_conc_b", 0)
-    col1, col2, col3 = st.columns(3)
-    col1.metric("New Tank Volume", f"{final_volume:.2f} L")
-    col2.metric("New Conc. of A", f"{final_conc_a:.2f} ml/L")
-    col3.metric("New Conc. of B", f"{final_conc_b:.2f} ml/L")
+        st.header("3. Final Predicted State")
+        final_volume, final_conc_a, final_conc_b = result.get("final_volume", 0), result.get("final_conc_a", 0), result.get("final_conc_b", 0)
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("New Tank Volume", f"{final_volume:.2f} L")
+        with col2:
+            styled_metric("New Conc. of A", final_conc_a, "ml/L", DEFAULT_TARGET_A_ML_L)
+        with col3:
+            styled_metric("New Conc. of B", final_conc_b, "ml/L", DEFAULT_TARGET_B_ML_L)
 
 # --- Tab 3: Module 3 Sandbox ---
 
@@ -184,11 +245,14 @@ def display_simulation_results(results: Dict[str, float]):
     Args:
         results: A dictionary containing the calculated results from the backend.
     """
-    st.header("3. Live Results Dashboard")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("New Tank Volume", f"{results['new_volume']:.2f} L")
-    col2.metric("New Conc. of A", f"{results['new_conc_a']:.2f} ml/L")
-    col3.metric("New Conc. of B", f"{results['new_conc_b']:.2f} ml/L")
+    with st.expander("Live Results Dashboard", expanded=True):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("New Tank Volume", f"{results['new_volume']:.2f} L")
+        with col2:
+            styled_metric("New Conc. of A", results['new_conc_a'], "ml/L", DEFAULT_TARGET_A_ML_L)
+        with col3:
+            styled_metric("New Conc. of B", results['new_conc_b'], "ml/L", DEFAULT_TARGET_B_ML_L)
 
 # --- Tab 4: Module 7 Corrector ---
 
@@ -201,20 +265,24 @@ def render_module7_corrector_ui() -> Dict[str, Any]:
     st.header("Module 7 Auto-Corrector")
     st.write("Enter the current status of your tank, and the app will calculate a correction recipe.")
 
-    auto_inputs = {}
-    col1, col2, col3, col4 = st.columns(4)
-    auto_inputs['current_volume'] = col1.number_input(
-        "Current Volume (L)", min_value=0.0, max_value=MODULE7_TOTAL_VOLUME, value=180.0, step=10.0, key="m7_corr_input_vol"
-    )
-    auto_inputs['current_cond'] = col2.number_input(
-        "Measured 'Conditioner' (ml/L)", min_value=0.0, value=175.0, step=1.0, key="m7_corr_input_cond"
-    )
-    auto_inputs['current_cu'] = col3.number_input(
-        "Measured 'Cu Etch' (g/L)", min_value=0.0, value=22.0, step=0.1, format="%.1f", key="m7_corr_input_cu"
-    )
-    auto_inputs['current_h2o2'] = col4.number_input(
-        "Measured 'H2O2' (ml/L)", min_value=0.0, value=6.0, step=0.1, format="%.1f", key="m7_corr_input_h2o2"
-    )
+    with st.form(key="m7_corr_form"):
+        auto_inputs = {}
+        col1, col2, col3, col4 = st.columns(4)
+        auto_inputs['current_volume'] = col1.number_input(
+            "Current Volume (L)", min_value=0.0, max_value=MODULE7_TOTAL_VOLUME, value=180.0, step=10.0, key="m7_corr_input_vol"
+        )
+        auto_inputs['current_cond'] = col2.number_input(
+            "Measured 'Conditioner' (ml/L)", min_value=0.0, value=175.0, step=1.0, key="m7_corr_input_cond"
+        )
+        auto_inputs['current_cu'] = col3.number_input(
+            "Measured 'Cu Etch' (g/L)", min_value=0.0, value=22.0, step=0.1, format="%.1f", key="m7_corr_input_cu"
+        )
+        auto_inputs['current_h2o2'] = col4.number_input(
+            "Measured 'H2O2' (ml/L)", min_value=0.0, value=6.0, step=0.1, format="%.1f", key="m7_corr_input_h2o2"
+        )
+
+        auto_inputs['submitted'] = st.form_submit_button("Calculate Correction")
+
     return auto_inputs
 
 def display_module7_correction(result: Dict[str, Any]):
@@ -223,32 +291,41 @@ def display_module7_correction(result: Dict[str, Any]):
     Args:
         result: A dictionary containing the calculated results from the backend.
     """
-    st.header("Auto-Corrector Recipe & Final Result")
-    status = result.get("status")
+    with st.expander("View Auto-Corrector Recipe & Final Result", expanded=True):
+        status = result.get("status")
 
-    if status == "DILUTION":
-        st.success("✅ Dilution Required: At least one concentration is too high.")
-        st.metric("Action: Add Water", f"{result['add_water']:.2f} L")
-    elif status == "FORTIFICATION":
-        st.success("✅ Fortification Required: All concentrations are low.")
+        if status == "DILUTION":
+            st.success("✅ Dilution Required: At least one concentration is too high.")
+            st.metric("Action: Add Water", f"{result['add_water']:.2f} L")
+        elif status == "FORTIFICATION":
+            st.success("✅ Fortification Required: All concentrations are low.")
+            (
+                col1,
+                col2,
+                col3,
+                col4,
+            ) = st.columns(4)
+            col1.metric("Add 'Conditioner'", f"{result['add_cond']:.1f} ml")
+            col2.metric("Add 'Cu Etch'", f"{result['add_cu']:.1f} g")
+            col3.metric("Add 'H2O2'", f"{result['add_h2o2']:.1f} ml")
+            col4.metric("Add Filler Water", f"{result['add_water']:.2f} L")
+        elif status == "ERROR":
+            st.error(f"❌ {result.get('message', 'An unknown error occurred.')}")
+            return
+        else:  # Handle case where status is None or unexpected
+            st.warning("Could not determine correction status.")
+            return
+
+        st.subheader("Final Predicted State")
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Add 'Conditioner'", f"{result['add_cond']:.1f} ml")
-        col2.metric("Add 'Cu Etch'", f"{result['add_cu']:.1f} g")
-        col3.metric("Add 'H2O2'", f"{result['add_h2o2']:.1f} ml")
-        col4.metric("Add Filler Water", f"{result['add_water']:.2f} L")
-    elif status == "ERROR":
-        st.error(f"❌ {result.get('message', 'An unknown error occurred.')}")
-        return
-    else: # Handle case where status is None or unexpected
-        st.warning("Could not determine correction status.")
-        return
-
-    st.subheader("Final Predicted State")
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("New Tank Volume", f"{result['final_volume']:.2f} L")
-    col2.metric("New 'Conditioner'", f"{result['final_cond']:.2f} ml/L")
-    col3.metric("New 'Cu Etch'", f"{result['final_cu']:.2f} g/L")
-    col4.metric("New 'H2O2'", f"{result['final_h2o2']:.2f} ml/L")
+        with col1:
+            st.metric("New Tank Volume", f"{result['final_volume']:.2f} L")
+        with col2:
+            styled_metric("New 'Conditioner'", result['final_cond'], "ml/L", MODULE7_TARGET_CONDITION_ML_L)
+        with col3:
+            styled_metric("New 'Cu Etch'", result['final_cu'], "g/L", MODULE7_TARGET_CU_ETCH_G_L)
+        with col4:
+            styled_metric("New 'H2O2'", result['final_h2o2'], "ml/L", MODULE7_TARGET_H2O2_ML_L)
 
 # --- Tab 5: Module 7 Sandbox ---
 
@@ -304,9 +381,13 @@ def display_module7_simulation(result: Dict[str, float]):
     Args:
         result: A dictionary containing the calculated results from the backend.
     """
-    st.header("Sandbox Live Results")
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("New Tank Volume", f"{result['new_volume']:.2f} L")
-    col2.metric("New 'Conditioner'", f"{result['new_cond']:.2f} ml/L")
-    col3.metric("New 'Cu Etch'", f"{result['new_cu']:.2f} g/L")
-    col4.metric("New 'H2O2'", f"{result['new_h2o2']:.2f} ml/L")
+    with st.expander("Sandbox Live Results", expanded=True):
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("New Tank Volume", f"{result['new_volume']:.2f} L")
+        with col2:
+            styled_metric("New 'Conditioner'", result['new_cond'], "ml/L", MODULE7_TARGET_CONDITION_ML_L)
+        with col3:
+            styled_metric("New 'Cu Etch'", result['new_cu'], "g/L", MODULE7_TARGET_CU_ETCH_G_L)
+        with col4:
+            styled_metric("New 'H2O2'", result['new_h2o2'], "ml/L", MODULE7_TARGET_H2O2_ML_L)
