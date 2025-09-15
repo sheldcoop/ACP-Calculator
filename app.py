@@ -81,8 +81,8 @@ def main():
             "current_conc_b_ml_l": sandbox_inputs["start_conc_b"],
             "water_to_add": sandbox_inputs["water_to_add"],
             "makeup_to_add": sandbox_inputs["makeup_to_add"],
-            "makeup_conc_a_ml_l": sandbox_inputs["makeup_conc_a"],
-            "makeup_conc_b_ml_l": sandbox_inputs["makeup_conc_b"]
+            "makeup_conc_a_ml_l": sandbox_inputs["makeup_conc_a_ml_l"],
+            "makeup_conc_b_ml_l": sandbox_inputs["makeup_conc_b_ml_l"]
         }
         simulation_results = simulate_addition(**sim_args)
         st.markdown("---")
