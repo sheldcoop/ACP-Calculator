@@ -246,6 +246,7 @@ def calculate_module7_correction(
     target_cu_g_l: float,
     target_h2o2_ml_l: float,
     module7_total_volume: float,
+    starter_conc: float,
 ) -> Dict[str, Union[float, str]]:
     """Calculates the correction for Module 7, deciding between dilution or fortification.
 
@@ -258,6 +259,7 @@ def calculate_module7_correction(
         target_cu_g_l: Target concentration of Copper Etch (g/L).
         target_h2o2_ml_l: Target concentration of H2O2 (ml/L).
         module7_total_volume: The total capacity of the Module 7 tank (L).
+        starter_conc: The concentration of the 'CupraEtch Starter' liquid (g/L).
 
     Returns:
         A dictionary detailing the correction recipe and final state.
@@ -289,7 +291,7 @@ def calculate_module7_correction(
         
         return {
             "status": "DILUTION", "add_water": water_to_add,
-            "add_cond": 0, "add_cu": 0, "add_h2o2": 0,
+            "add_cond": 0, "add_cu_L": 0, "add_h2o2": 0,
             "final_volume": final_volume, "final_cond": final_cond, "final_cu": final_cu, "final_h2o2": final_h2o2
         }
 
@@ -297,29 +299,31 @@ def calculate_module7_correction(
     else:
         # Correct Logic: Calculate deficit based on the *current volume* of liquid.
         add_cond_ml = (target_cond_ml_l - current_cond_ml_l) * current_volume
-        add_cu_g = (target_cu_g_l - current_cu_g_l) * current_volume
+        grams_cu_needed = (target_cu_g_l - current_cu_g_l) * current_volume
         add_h2o2_ml = (target_h2o2_ml_l - current_h2o2_ml_l) * current_volume
 
         # Ensure no negative additions if a value is already at target
         add_cond_ml = max(0, add_cond_ml)
-        add_cu_g = max(0, add_cu_g)
+        grams_cu_needed = max(0, grams_cu_needed)
         add_h2o2_ml = max(0, add_h2o2_ml)
 
-        # Volume increase is ONLY from liquid chemicals (Conditioner and H2O2).
-        # Solid additions (Cu Etch) are assumed to have negligible volume impact.
-        volume_increase_L = (add_cond_ml + add_h2o2_ml) / 1000.0
+        # Convert the mass of Cu Etch needed into a volume of starter liquid.
+        add_cu_L = grams_cu_needed / starter_conc if starter_conc > 0 else 0
+
+        # The total volume of liquid to be added.
+        total_liquid_added = (add_cond_ml / 1000.0) + (add_h2o2_ml / 1000.0) + add_cu_L
         
-        if volume_increase_L > available_space:
-            return {"status": "ERROR", "message": f"Fortification requires adding {volume_increase_L:.2f} L of liquid chemicals, which exceeds available space."}
+        if total_liquid_added > available_space:
+            return {"status": "ERROR", "message": f"Fortification requires adding {total_liquid_added:.2f} L of liquid chemicals, which exceeds available space."}
 
         # The final volume is the current volume plus the added liquid chemicals.
-        final_volume = current_volume + volume_increase_L
+        final_volume = current_volume + total_liquid_added
         
         return {
             "status": "FORTIFICATION",
             "add_water": 0.0, # No filler water is added in this scenario.
             "add_cond": add_cond_ml,
-            "add_cu": add_cu_g,
+            "add_cu_L": add_cu_L,
             "add_h2o2": add_h2o2_ml,
             "final_volume": final_volume,
             "final_cond": target_cond_ml_l,
@@ -337,8 +341,9 @@ def simulate_module7_addition(
     current_h2o2_ml_l: float,
     add_water_L: float,
     add_cond_L: float,
-    add_cu_g: float,
+    add_cu_L: float,
     add_h2o2_ml: float,
+    starter_conc: float,
 ) -> Dict[str, float]:
     """Simulates the result of adding specific amounts to the Module 7 tank.
 
@@ -352,22 +357,26 @@ def simulate_module7_addition(
         current_h2o2_ml_l: Starting concentration of H2O2 (ml/L).
         add_water_L: Volume of water to add (L).
         add_cond_L: Volume of pure Conditioner to add (L).
-        add_cu_g: Mass of pure Copper Etch to add (g).
+        add_cu_L: Volume of 'Cu Etch' Starter to add (L).
         add_h2o2_ml: Volume of pure H2O2 to add (ml).
+        starter_conc: The concentration of the 'CupraEtch Starter' liquid (g/L).
 
     Returns:
         A dictionary with the new volume and concentrations.
     """
     # Final volume is the sum of all liquid additions.
-    final_volume = current_volume + add_water_L + add_cond_L + (add_h2o2_ml / 1000.0)
+    final_volume = current_volume + add_water_L + add_cond_L + (add_h2o2_ml / 1000.0) + add_cu_L
 
     if final_volume < EPSILON:
         return {"new_volume": 0, "new_cond": 0, "new_cu": 0, "new_h2o2": 0}
 
+    # Convert the added volume of starter back to a mass for calculation.
+    grams_cu_added = add_cu_L * starter_conc
+
     # Calculate the total amount of each chemical in the final mix.
     # Amounts are in native units (ml or g).
     final_amount_cond = (current_volume * current_cond_ml_l) + (add_cond_L * 1000.0)
-    final_amount_cu = (current_volume * current_cu_g_l) + add_cu_g
+    final_amount_cu = (current_volume * current_cu_g_l) + grams_cu_added
     final_amount_h2o2 = (current_volume * current_h2o2_ml_l) + add_h2o2_ml
 
     # Calculate the new concentrations in their respective units (ml/L or g/L).

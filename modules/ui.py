@@ -284,6 +284,13 @@ def render_module7_corrector_ui() -> Dict[str, Any]:
     st.header("Module 7 Auto-Corrector")
     st.write("Enter the current status of your tank, and the app will calculate a correction recipe.")
 
+    starter_conc = st.number_input(
+        "Concentration of your 'CupraEtch Starter' liquid (g/L)",
+        min_value=0.1, value=200.0, step=10.0,
+        key="m7_auto_starter_conc",
+        help="Enter the g/L concentration of the stock solution you pour from."
+    )
+
     with st.form(key="m7_corr_form"):
         auto_inputs = {}
         col1, col2, col3, col4 = st.columns(4)
@@ -302,6 +309,7 @@ def render_module7_corrector_ui() -> Dict[str, Any]:
 
         auto_inputs['submitted'] = st.form_submit_button("Calculate Correction")
 
+    auto_inputs['starter_conc'] = starter_conc
     return auto_inputs
 
 def display_module7_correction(result: Dict[str, Any]):
@@ -324,7 +332,7 @@ def display_module7_correction(result: Dict[str, Any]):
                 col3,
             ) = st.columns(3)
             col1.metric("Add 'Conditioner'", f"{result['add_cond']:.1f} ml")
-            col2.metric("Add 'Cu Etch'", f"{result['add_cu']:.1f} g")
+            col2.metric("Add 'Cu Etch' Starter", f"{result['add_cu_L']:.2f} L")
             col3.metric("Add 'H2O2'", f"{result['add_h2o2']:.1f} ml")
         elif status == "ERROR":
             st.error(f"❌ {result.get('message', 'An unknown error occurred.')}")
@@ -351,6 +359,13 @@ def render_module7_sandbox_ui() -> Dict[str, Any]:
     st.header("Module 7 Sandbox Simulator")
     st.write("Use the sliders to explore how different additions affect the final concentrations.")
     
+    starter_conc = st.number_input(
+        "Concentration of your 'CupraEtch Starter' liquid (g/L)",
+        min_value=0.1, value=200.0, step=10.0,
+        key="m7_sb_starter_conc",
+        help="Enter the g/L concentration of the stock solution you pour from."
+    )
+
     sandbox_inputs = {}
     col1, col2, col3, col4 = st.columns(4)
     sandbox_inputs['start_volume'] = col1.number_input(
@@ -378,15 +393,19 @@ def render_module7_sandbox_ui() -> Dict[str, Any]:
     sandbox_inputs['add_cond_L'] = col2.slider(
         "Conditioner to Add (L)", 0.0, 10.0, 0.0, 0.1, key="m7_sand_slider_cond"
     )
-    sandbox_inputs['add_cu'] = col3.slider(
-        "'Cu Etch' to Add (grams)", 0, 5000, 0, 100, key="m7_sand_slider_cu"
+    sandbox_inputs['add_cu_L'] = col3.slider(
+        "'Cu Etch' Starter to Add (L)", # Label changed to Liters
+        0.0, 10.0, 0.0, 0.1,             # Range changed to Liters
+        key="m7_slider_cu_L"
     )
     sandbox_inputs['add_h2o2'] = col4.slider(
         "'H2O2' to Add (ml)", 0, 2000, 0, 50, key="m7_sand_slider_h2o2"
     )
     
+    sandbox_inputs['starter_conc'] = starter_conc
+
     # --- Capacity Check ---
-    liquid_added = sandbox_inputs['add_water'] + sandbox_inputs['add_cond_L'] + (sandbox_inputs['add_h2o2'] / 1000.0)
+    liquid_added = sandbox_inputs['add_water'] + sandbox_inputs['add_cond_L'] + (sandbox_inputs['add_h2o2'] / 1000.0) + sandbox_inputs['add_cu_L']
     if liquid_added > available_space:
         st.error(f"⚠️ Warning: Total liquid additions ({liquid_added:.2f} L) exceed available space ({available_space:.2f} L)!")
 

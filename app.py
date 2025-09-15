@@ -101,7 +101,8 @@ def main():
                 "target_cond_ml_l": MODULE7_TARGET_CONDITION_ML_L,
                 "target_cu_g_l": MODULE7_TARGET_CU_ETCH_G_L,
                 "target_h2o2_ml_l": MODULE7_TARGET_H2O2_ML_L,
-                "module7_total_volume": MODULE7_TOTAL_VOLUME
+                "module7_total_volume": MODULE7_TOTAL_VOLUME,
+                "starter_conc": auto_inputs['starter_conc']
             }
             auto_correction_result = calculate_module7_correction(**auto_args)
             st.markdown("---")
@@ -119,8 +120,9 @@ def main():
             "current_h2o2_ml_l": sandbox_inputs['start_h2o2'],
             "add_water_L": sandbox_inputs['add_water'],
             "add_cond_L": sandbox_inputs['add_cond_L'],
-            "add_cu_g": sandbox_inputs['add_cu'],
+            "add_cu_L": sandbox_inputs['add_cu_L'],
             "add_h2o2_ml": sandbox_inputs['add_h2o2'],
+            "starter_conc": sandbox_inputs['starter_conc'],
         }
         sim_results = simulate_module7_addition(**sim_args)
         st.markdown("---")
