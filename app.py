@@ -41,6 +41,7 @@ def main():
         "Module 7 Sandbox",
     ])
 
+    # --- Logic for Tabs 1, 2, 3, 4 (Unchanged) ---
     with tab1:
         makeup_inputs = render_makeup_tank_ui()
         makeup_recipe = calculate_refill_recipe(**makeup_inputs)
@@ -67,12 +68,25 @@ def main():
         st.markdown("---")
         display_module7_correction(auto_correction_result)
 
+    # --- Logic for Tab 5: Module 7 Sandbox Simulator (UPDATED) ---
     with tab5:
         sandbox_inputs = render_module7_sandbox_ui()
-        sim_args = {"current_volume": sandbox_inputs['start_volume'], "current_cond_ml_l": sandbox_inputs['start_cond'], "current_cu_g_l": sandbox_inputs['start_cu'], "current_h2o2_ml_l": sandbox_inputs['start_h2o2'], "add_water_L": sandbox_inputs['add_water'], "add_cond_ml": sandbox_inputs['add_cond'], "add_cu_g": sandbox_inputs['add_cu'], "add_h2o2_ml": sandbox_inputs['add_h2o2']}
+        
+        # *** THIS DICTIONARY HAS BEEN CHANGED TO CONVERT LITERS TO ML ***
+        sim_args = {
+            "current_volume": sandbox_inputs['start_volume'], 
+            "current_cond_ml_l": sandbox_inputs['start_cond'], 
+            "current_cu_g_l": sandbox_inputs['start_cu'], 
+            "current_h2o2_ml_l": sandbox_inputs['start_h2o2'],
+            "add_water_L": sandbox_inputs['add_water'], 
+            "add_cond_ml": sandbox_inputs['add_cond_L'] * 1000.0, # Convert L to ml
+            "add_cu_g": sandbox_inputs['add_cu'], 
+            "add_h2o2_ml": sandbox_inputs['add_h2o2'],
+        }
         sim_results = simulate_module7_addition(**sim_args)
         st.markdown("---")
         display_module7_simulation(sim_results)
+
 
 if __name__ == "__main__":
     main()
