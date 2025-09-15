@@ -128,25 +128,51 @@ def display_module7_correction(result: Dict[str, Any]):
     col4.metric("New 'H2O2'", f"{result['final_h2o2']:.2f} ml/L")
 
 # --- UI for Tab 5: Module 7 Sandbox Simulator ---
+# modules/ui.py
+
+# ... (keep all the existing content of the file above this line) ...
+# ... (all previous functions should remain) ...
+
+
+# --- UI for Tab 5: Module 7 Sandbox Simulator (UPDATED) ---
 def render_module7_sandbox_ui() -> Dict[str, Any]:
+    """Renders the UI for the Module 7 Sandbox Simulator ONLY."""
     st.header("Module 7 Sandbox Simulator")
     st.write("Use the sliders to explore how different additions affect the final concentrations.")
+    
     sandbox_inputs = {}
     col1, col2, col3, col4 = st.columns(4)
     sandbox_inputs['start_volume'] = col1.number_input("Start Volume (L)", min_value=0.0, max_value=MODULE7_TOTAL_VOLUME, value=180.0, step=10.0, key="m7_sb_vol")
-    sandbox_inputs['start_cond'] = col2.number_input("Start 'Condition' (ml/L)", min_value=0.0, value=175.0, step=1.0, key="m7_sb_cond")
+    sandbox_inputs['start_cond'] = col2.number_input("Start 'Conditioner' (ml/L)", min_value=0.0, value=175.0, step=1.0, key="m7_sb_cond")
     sandbox_inputs['start_cu'] = col3.number_input("Start 'Cu Etch' (g/L)", min_value=0.0, value=22.0, step=0.1, format="%.1f", key="m7_sb_cu")
     sandbox_inputs['start_h2o2'] = col4.number_input("Start 'H2O2' (ml/L)", min_value=0.0, value=6.0, step=0.1, format="%.1f", key="m7_sb_h2o2")
+    
     available_space = MODULE7_TOTAL_VOLUME - sandbox_inputs['start_volume']
     st.info(f"The sandbox tank has **{available_space:.2f} L** of available space for LIQUID additions.")
+
+    # --- Interactive Sliders (with updated Conditioner slider) ---
     col1, col2, col3, col4 = st.columns(4)
     sandbox_inputs['add_water'] = col1.slider("Water to Add (L)", 0.0, available_space if available_space > 0 else 1.0, 0.0, 0.5, key="m7_slider_water")
-    sandbox_inputs['add_cond'] = col2.slider("'Condition' to Add (ml)", 0, 10000, 0, 100, key="m7_slider_cond")
+    
+    # *** THIS SLIDER HAS BEEN CHANGED ***
+    sandbox_inputs['add_cond_L'] = col2.slider("Conditioner to Add (L)", 0.0, 10.0, 0.0, 0.1, key="m7_slider_cond_L")
+    
     sandbox_inputs['add_cu'] = col3.slider("'Cu Etch' to Add (grams)", 0, 5000, 0, 100, key="m7_slider_cu")
     sandbox_inputs['add_h2o2'] = col4.slider("'H2O2' to Add (ml)", 0, 2000, 0, 50, key="m7_slider_h2o2")
-    liquid_added = sandbox_inputs['add_water'] + (sandbox_inputs['add_cond'] / 1000.0) + (sandbox_inputs['add_h2o2'] / 1000.0)
-    if liquid_added > available_space: st.error(f"⚠️ Warning: Total liquid additions ({liquid_added:.2f} L) exceed available space ({available_space:.2f} L)!")
+    
+    # Capacity Check for Sandbox
+    # The value from the updated slider is already in Liters.
+    liquid_added = sandbox_inputs['add_water'] + sandbox_inputs['add_cond_L'] + (sandbox_inputs['add_h2o2'] / 1000.0)
+    if liquid_added > available_space:
+        st.error(f"⚠️ Warning: Total liquid additions ({liquid_added:.2f} L) exceed available space ({available_space:.2f} L)!")
+
+    # Also update the input label for the auto-corrector for consistency
+    st.session_state.m7_auto_cond_label = "Measured 'Conditioner' (ml/L)"
+
+
     return sandbox_inputs
+
+# ... (the rest of the file remains the same) ...
 
 def display_module7_simulation(result: Dict[str, float]):
     st.header("Sandbox Live Results")
