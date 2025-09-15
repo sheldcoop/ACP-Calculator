@@ -26,6 +26,34 @@ from .config import (
 
 # --- UI Helper Functions ---
 
+def display_module3_gauge(label: str, value: float, chemical: str):
+    """Displays a custom gauge for Module 3 with hardcoded thresholds."""
+    if chemical == 'A':
+        target = DEFAULT_TARGET_A_ML_L
+        green_zone = [100, 140]
+    elif chemical == 'B':
+        target = DEFAULT_TARGET_B_ML_L
+        green_zone = [45, 70]
+    else:
+        st.error("Invalid chemical for Module 3 gauge.")
+        return
+
+    fig = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = value,
+        title = {'text': f"<b>{label}</b><br><span style='font-size:0.8em;color:gray'>ml/L</span>"},
+        number = {'suffix': f" / {target:.2f}"},
+        gauge = {
+            'axis': {'range': [None, target * 2]},
+            'steps' : [
+                 {'range': [0, green_zone[0]], 'color': "red"},
+                 {'range': green_zone, 'color': "green"},
+                 {'range': [green_zone[1], target * 2], 'color': "red"}],
+            'threshold' : {'line': {'color': "black", 'width': 4}, 'thickness': 0.75, 'value': target}
+        }))
+    fig.update_layout(height=250, margin=dict(l=10, r=10, t=60, b=10))
+    st.plotly_chart(fig, use_container_width=True)
+
 def display_gauge(label: str, value: float, target: float, unit: str):
     """Displays a gauge chart for a given metric.
 
@@ -59,32 +87,6 @@ def display_gauge(label: str, value: float, target: float, unit: str):
     fig.update_layout(height=250, margin=dict(l=10, r=10, t=60, b=10))
     st.plotly_chart(fig, use_container_width=True)
 
-def display_simulation_chart(label: str, start_val: float, end_val: float, target_val: float, unit: str):
-    """Displays a bar chart comparing start, end, and target values.
-
-    Args:
-        label: The title for the chart.
-        start_val: The starting value.
-        end_val: The final (simulated) value.
-        target_val: The target value.
-        unit: The unit for the values.
-    """
-    source = pd.DataFrame({
-        'Category': ['Current', 'Simulated'],
-        'Value': [start_val, end_val]
-    })
-
-    bar_chart = alt.Chart(source).mark_bar().encode(
-        x='Category',
-        y=alt.Y('Value', title=f"{label} ({unit})"),
-        color='Category'
-    ).properties(
-        width=alt.Step(80) # Bar width
-    )
-
-    target_line = alt.Chart(pd.DataFrame({'y': [target_val]})).mark_rule(color='red', strokeDash=[5,5]).encode(y='y')
-
-    st.altair_chart(bar_chart + target_line, use_container_width=True)
 
 # --- Tab 1: Makeup Tank Refill ---
 
@@ -212,9 +214,9 @@ def display_module3_correction(result: Dict[str, Any]):
 
         col1, col2 = st.columns(2)
         with col1:
-            display_gauge("Concentration A", final_conc_a, DEFAULT_TARGET_A_ML_L, "ml/L")
+            display_module3_gauge("Concentration A", final_conc_a, "A")
         with col2:
-            display_gauge("Concentration B", final_conc_b, DEFAULT_TARGET_B_ML_L, "ml/L")
+            display_module3_gauge("Concentration B", final_conc_b, "B")
 
 # --- Tab 3: Module 3 Sandbox ---
 
@@ -256,21 +258,20 @@ def render_sandbox_ui() -> Dict[str, Any]:
         "makeup_conc_a_ml_l": DEFAULT_TARGET_A_ML_L, "makeup_conc_b_ml_l": DEFAULT_TARGET_B_ML_L
     }
 
-def display_simulation_results(results: Dict[str, float], start_concs: Dict[str, float]):
+def display_simulation_results(results: Dict[str, float]):
     """Displays the live results of the Module 3 sandbox simulation.
 
     Args:
         results: A dictionary containing the calculated results from the backend.
-        start_concs: A dictionary containing the starting concentrations for comparison.
     """
     with st.expander("Live Results Dashboard", expanded=True):
         st.metric("New Tank Volume", f"{results['new_volume']:.2f} L")
 
         col1, col2 = st.columns(2)
         with col1:
-            display_simulation_chart("Concentration A", start_concs['a'], results['new_conc_a'], DEFAULT_TARGET_A_ML_L, "ml/L")
+            display_gauge("Concentration A", results['new_conc_a'], DEFAULT_TARGET_A_ML_L, "ml/L")
         with col2:
-            display_simulation_chart("Concentration B", start_concs['b'], results['new_conc_b'], DEFAULT_TARGET_B_ML_L, "ml/L")
+            display_gauge("Concentration B", results['new_conc_b'], DEFAULT_TARGET_B_ML_L, "ml/L")
 
 # --- Tab 4: Module 7 Corrector ---
 
@@ -391,19 +392,18 @@ def render_module7_sandbox_ui() -> Dict[str, Any]:
 
     return sandbox_inputs
 
-def display_module7_simulation(result: Dict[str, float], start_concs: Dict[str, float]):
+def display_module7_simulation(result: Dict[str, float]):
     """Displays the live results of the Module 7 sandbox simulation.
 
     Args:
         result: A dictionary containing the calculated results from the backend.
-        start_concs: A dictionary containing the starting concentrations for comparison.
     """
     with st.expander("Sandbox Live Results", expanded=True):
         st.metric("New Tank Volume", f"{result['new_volume']:.2f} L")
         col1, col2, col3 = st.columns(3)
         with col1:
-            display_simulation_chart("Conditioner", start_concs['cond'], result['new_cond'], MODULE7_TARGET_CONDITION_ML_L, "ml/L")
+            display_gauge("Conditioner", result['new_cond'], MODULE7_TARGET_CONDITION_ML_L, "ml/L")
         with col2:
-            display_simulation_chart("Cu Etch", start_concs['cu'], result['new_cu'], MODULE7_TARGET_CU_ETCH_G_L, "g/L")
+            display_gauge("Cu Etch", result['new_cu'], MODULE7_TARGET_CU_ETCH_G_L, "g/L")
         with col3:
-            display_simulation_chart("H2O2", start_concs['h2o2'], result['new_h2o2'], MODULE7_TARGET_H2O2_ML_L, "ml/L")
+            display_gauge("H2O2", result['new_h2o2'], MODULE7_TARGET_H2O2_ML_L, "ml/L")
