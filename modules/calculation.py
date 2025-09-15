@@ -127,3 +127,41 @@ def calculate_module3_correction(
         "final_conc_a": final_conc_a,
         "final_conc_b": final_conc_b,
     }
+
+# modules/calculation.py
+
+# ... (keep the entire existing content of the file above this line) ...
+# ... (calculate_refill_recipe and calculate_module3_correction should remain) ...
+
+
+# --- SIMULATOR: For the Interactive Sandbox Mode ---
+
+def simulate_addition(
+    current_volume: float,
+    current_conc_a_ml_l: float,
+    current_conc_b_ml_l: float,
+    makeup_conc_a_ml_l: float,
+    makeup_conc_b_ml_l: float,
+    water_to_add: float,
+    makeup_to_add: float,
+) -> Dict[str, float]:
+    """
+    Simulates the result of adding specific amounts of water and makeup solution.
+    This is a direct calculation, not an optimization.
+    """
+    # --- Calculate the final state of the tank after the additions ---
+    final_volume = current_volume + water_to_add + makeup_to_add
+
+    # Calculate the total amount of each chemical in the final mix
+    final_amount_a = (current_volume * current_conc_a_ml_l) + (makeup_to_add * makeup_conc_a_ml_l)
+    final_amount_b = (current_volume * current_conc_b_ml_l) + (makeup_to_add * makeup_conc_b_ml_l)
+    
+    # Calculate the new concentrations
+    final_conc_a = final_amount_a / final_volume if final_volume > 0 else 0
+    final_conc_b = final_amount_b / final_volume if final_volume > 0 else 0
+
+    return {
+        "new_volume": final_volume,
+        "new_conc_a": final_conc_a,
+        "new_conc_b": final_conc_b,
+    }
