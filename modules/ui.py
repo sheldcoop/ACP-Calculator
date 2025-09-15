@@ -12,7 +12,7 @@ from .config import (
     MODULE7_TOTAL_VOLUME 
 )
 
-# --- UI for Tab 1: Makeup Tank Refill Calculator (UNCHANGED) ---
+# --- UI for Tab 1: Makeup Tank Refill Calculator ---
 
 def render_makeup_tank_ui():
     """
@@ -71,11 +71,12 @@ def display_makeup_recipe(recipe: Dict[str, Any]):
     st.info(f"Total volume to be added: **{total_added:.2f} L**")
 
 
-# --- UI for Tab 2: Module 3 Corrector (NEW DISPLAY LOGIC) ---
+# --- UI for Tab 2: Module 3 Corrector ---
 
 def render_module3_ui():
     """
     Renders the UI for the Module 3 calculator and returns a dictionary of inputs.
+    Note: The target concentrations are fixed from the Makeup Tank defaults.
     """
     st.header("1. Module 3 Current Status")
     col1, col2, col3 = st.columns(3)
@@ -90,7 +91,7 @@ def render_module3_ui():
     measured_conc_a = col2.number_input(
         "Measured Conc. of A (ml/L)",
         min_value=0.0,
-        value=150.0, # The "mixed" scenario from our test case
+        value=150.0,
         step=1.0,
         format="%.1f",
         key="mod3_conc_a"
@@ -98,7 +99,7 @@ def render_module3_ui():
     measured_conc_b = col3.number_input(
         "Measured Conc. of B (ml/L)",
         min_value=0.0,
-        value=45.0, # The "mixed" scenario from our test case
+        value=45.0,
         step=1.0,
         format="%.1f",
         key="mod3_conc_b"
@@ -129,9 +130,9 @@ def display_module3_correction(result: Dict[str, Any]):
     add_makeup = result.get("add_makeup", 0)
 
     if status == "PERFECT_CORRECTION":
-        st.success("✅ A perfect correction is possible by filling the tank.")
+        st.success("✅ A perfect correction is possible with the recipe below.")
     elif status == "BEST_POSSIBLE_CORRECTION":
-        st.warning("⚠️ A perfect correction is not possible. The recipe below provides the best possible correction by topping up the tank.")
+        st.warning("⚠️ A perfect correction is not possible. The recipe below provides the best possible correction.")
     
     col1, col2 = st.columns(2)
     col1.metric("Action: Add Makeup Solution", f"{add_makeup:.2f} L")
@@ -147,11 +148,6 @@ def display_module3_correction(result: Dict[str, Any]):
     col1.metric("New Tank Volume", f"{final_volume:.2f} L")
     col2.metric("New Conc. of A", f"{final_conc_a:.2f} ml/L")
     col3.metric("New Conc. of B", f"{final_conc_b:.2f} ml/L")
-
-# modules/ui.py
-
-# ... (keep the entire existing content of the file above this line) ...
-# ... (render_makeup_tank_ui, display_makeup_recipe, etc. should remain) ...
 
 
 # --- UI for Tab 3: Sandbox Simulator ---
@@ -223,7 +219,7 @@ def render_sandbox_ui() -> Dict[str, Any]:
         "start_conc_b": start_conc_b,
         "water_to_add": water_to_add,
         "makeup_to_add": makeup_to_add,
-        "makeup_conc_a": DEFAULT_TARGET_A_ML_L, # Pass these along for the simulation
+        "makeup_conc_a": DEFAULT_TARGET_A_ML_L,
         "makeup_conc_b": DEFAULT_TARGET_B_ML_L,
     }
 
@@ -239,20 +235,11 @@ def display_simulation_results(results: Dict[str, float]):
     col2.metric("New Conc. of A", f"{results['new_conc_a']:.2f} ml/L")
     col3.metric("New Conc. of B", f"{results['new_conc_b']:.2f} ml/L")
 
-# modules/ui.py
 
-# ... (keep all the existing content of the file above this line) ...
-
-
-# --- UI for Tab 4: Module 7 Corrector & Simulator ---
-
-def render_module7_ui() -> Dict[str, Any]:
-    """
-    Renders the combined UI for the Module 7 Auto-Corrector and Sandbox Simulator.
-    Returns a dictionary containing all user inputs from the page.
-    """
-    # --- Part 1: Auto-Corrector ---
-    st.header("1. Module 7 Auto-Corrector")
+# --- UI for Tab 4: Module 7 Auto-Corrector ---
+def render_module7_corrector_ui() -> Dict[str, Any]:
+    """Renders the UI for the Module 7 Auto-Corrector ONLY."""
+    st.header("Module 7 Auto-Corrector")
     st.write("Enter the current status of your tank, and the app will calculate a correction recipe.")
     
     auto_inputs = {}
@@ -262,10 +249,12 @@ def render_module7_ui() -> Dict[str, Any]:
     auto_inputs['current_cu'] = col3.number_input("Measured 'Cu Etch' (g/L)", min_value=0.0, value=22.0, step=0.1, format="%.1f", key="m7_auto_cu")
     auto_inputs['current_h2o2'] = col4.number_input("Measured 'H2O2' (ml/L)", min_value=0.0, value=6.0, step=0.1, format="%.1f", key="m7_auto_h2o2")
     
-    st.markdown("---")
+    return auto_inputs
 
-    # --- Part 2: Sandbox Simulator ---
-    st.header("2. Module 7 Sandbox Simulator")
+# --- UI for Tab 5: Module 7 Sandbox Simulator ---
+def render_module7_sandbox_ui() -> Dict[str, Any]:
+    """Renders the UI for the Module 7 Sandbox Simulator ONLY."""
+    st.header("Module 7 Sandbox Simulator")
     st.write("Use the sliders to explore how different additions affect the final concentrations.")
     
     sandbox_inputs = {}
@@ -280,21 +269,17 @@ def render_module7_ui() -> Dict[str, Any]:
 
     # Interactive Sliders
     col1, col2, col3, col4 = st.columns(4)
-    sandbox_inputs['add_water'] = col1.slider("Water to Add (L)", 0.0, available_space if available_space > 0 else 1.0, 0.0, 0.5)
-    sandbox_inputs['add_cond'] = col2.slider("'Condition' to Add (ml)", 0, 10000, 0, 100)
-    sandbox_inputs['add_cu'] = col3.slider("'Cu Etch' to Add (grams)", 0, 5000, 0, 100)
-    sandbox_inputs['add_h2o2'] = col4.slider("'H2O2' to Add (ml)", 0, 2000, 0, 50)
+    sandbox_inputs['add_water'] = col1.slider("Water to Add (L)", 0.0, available_space if available_space > 0 else 1.0, 0.0, 0.5, key="m7_slider_water")
+    sandbox_inputs['add_cond'] = col2.slider("'Condition' to Add (ml)", 0, 10000, 0, 100, key="m7_slider_cond")
+    sandbox_inputs['add_cu'] = col3.slider("'Cu Etch' to Add (grams)", 0, 5000, 0, 100, key="m7_slider_cu")
+    sandbox_inputs['add_h2o2'] = col4.slider("'H2O2' to Add (ml)", 0, 2000, 0, 50, key="m7_slider_h2o2")
     
     # Capacity Check for Sandbox
     liquid_added = sandbox_inputs['add_water'] + (sandbox_inputs['add_cond'] / 1000.0) + (sandbox_inputs['add_h2o2'] / 1000.0)
     if liquid_added > available_space:
         st.error(f"⚠️ Warning: Total liquid additions ({liquid_added:.2f} L) exceed available space ({available_space:.2f} L)!")
 
-    # Return a combined dictionary with clearly named sections
-    return {
-        "auto_inputs": auto_inputs,
-        "sandbox_inputs": sandbox_inputs,
-    }
+    return sandbox_inputs
 
 
 def display_module7_correction(result: Dict[str, Any]):
