@@ -303,12 +303,10 @@ def display_module7_correction(result: Dict[str, Any]):
                 col1,
                 col2,
                 col3,
-                col4,
-            ) = st.columns(4)
+            ) = st.columns(3)
             col1.metric("Add 'Conditioner'", f"{result['add_cond']:.1f} ml")
             col2.metric("Add 'Cu Etch'", f"{result['add_cu']:.1f} g")
             col3.metric("Add 'H2O2'", f"{result['add_h2o2']:.1f} ml")
-            col4.metric("Add Filler Water", f"{result['add_water']:.2f} L")
         elif status == "ERROR":
             st.error(f"❌ {result.get('message', 'An unknown error occurred.')}")
             return

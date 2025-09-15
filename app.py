@@ -53,30 +53,27 @@ def main():
 
     # --- Tab 1: Makeup Tank Refill ---
     with tab1:
-        # Render the UI inputs and get user values.
+        # This tab does not use the button workflow, it calculates instantly.
         makeup_inputs = render_makeup_tank_ui()
-        # Pass the inputs to the calculation function.
         makeup_recipe = calculate_refill_recipe(**makeup_inputs)
         st.markdown("---")
-        # Display the results.
         display_makeup_recipe(makeup_recipe)
 
     # --- Tab 2: Module 3 Corrector ---
     with tab2:
         # Render UI form and get user inputs.
         module3_inputs = render_module3_ui()
-        # Only perform calculation and display results if the form has been submitted.
-        if module3_inputs["submitted"]:
+        # Only perform calculation if the form has been submitted.
+        if module3_inputs.pop("submitted", False):
             correction_result = calculate_module3_correction(**module3_inputs)
             st.markdown("---")
-            # Display the results.
             display_module3_correction(correction_result)
 
     # --- Tab 3: Module 3 Sandbox ---
     with tab3:
         # Render UI and get user inputs for the simulation.
         sandbox_inputs = render_sandbox_ui()
-        # Prepare arguments for the simulation function.
+        # Prepare arguments for the simulation function, ensuring correct keys are used.
         sim_args = {
             "current_volume": sandbox_inputs["start_volume"],
             "current_conc_a_ml_l": sandbox_inputs["start_conc_a"],
@@ -88,15 +85,14 @@ def main():
         }
         simulation_results = simulate_addition(**sim_args)
         st.markdown("---")
-        # Display the simulation results.
         display_simulation_results(simulation_results)
 
     # --- Tab 4: Module 7 Corrector ---
     with tab4:
         # Render UI form and get user inputs.
         auto_inputs = render_module7_corrector_ui()
-        # Only perform calculation and display results if the form has been submitted.
-        if auto_inputs["submitted"]:
+        # Only perform calculation if the form has been submitted.
+        if auto_inputs.pop("submitted", False):
             auto_args = {
                 "current_volume": auto_inputs['current_volume'],
                 "current_cond_ml_l": auto_inputs['current_cond'],
@@ -109,7 +105,6 @@ def main():
             }
             auto_correction_result = calculate_module7_correction(**auto_args)
             st.markdown("---")
-            # Display the results.
             display_module7_correction(auto_correction_result)
 
     # --- Tab 5: Module 7 Sandbox ---
@@ -117,20 +112,18 @@ def main():
         # Render the UI for the Module 7 sandbox.
         sandbox_inputs = render_module7_sandbox_ui()
         # Prepare arguments for the refactored simulation function.
-        # The 'add_cond_L' value is now passed directly in Liters.
         sim_args = {
             "current_volume": sandbox_inputs['start_volume'],
             "current_cond_ml_l": sandbox_inputs['start_cond'],
             "current_cu_g_l": sandbox_inputs['start_cu'],
             "current_h2o2_ml_l": sandbox_inputs['start_h2o2'],
             "add_water_L": sandbox_inputs['add_water'],
-            "add_cond_L": sandbox_inputs['add_cond_L'],  # Passed directly in Liters
+            "add_cond_L": sandbox_inputs['add_cond_L'],
             "add_cu_g": sandbox_inputs['add_cu'],
             "add_h2o2_ml": sandbox_inputs['add_h2o2'],
         }
         sim_results = simulate_module7_addition(**sim_args)
         st.markdown("---")
-        # Display the simulation results.
         display_module7_simulation(sim_results)
 
 

@@ -295,25 +295,36 @@ def calculate_module7_correction(
 
     # --- Scenario 2: Fortification (if ALL concentrations are at or below target) ---
     else:
-        # Calculate how much of each pure chemical is needed to bring the *entire tank volume* to target.
-        add_cond_ml = (target_cond_ml_l - current_cond_ml_l) * module7_total_volume
-        add_cu_g = (target_cu_g_l - current_cu_g_l) * module7_total_volume
-        add_h2o2_ml = (target_h2o2_ml_l - current_h2o2_ml_l) * module7_total_volume
+        # Correct Logic: Calculate deficit based on the *current volume* of liquid.
+        add_cond_ml = (target_cond_ml_l - current_cond_ml_l) * current_volume
+        add_cu_g = (target_cu_g_l - current_cu_g_l) * current_volume
+        add_h2o2_ml = (target_h2o2_ml_l - current_h2o2_ml_l) * current_volume
+
+        # Ensure no negative additions if a value is already at target
+        add_cond_ml = max(0, add_cond_ml)
+        add_cu_g = max(0, add_cu_g)
+        add_h2o2_ml = max(0, add_h2o2_ml)
 
         # Volume increase is ONLY from liquid chemicals (Conditioner and H2O2).
+        # Solid additions (Cu Etch) are assumed to have negligible volume impact.
         volume_increase_L = (add_cond_ml + add_h2o2_ml) / 1000.0
         
         if volume_increase_L > available_space:
             return {"status": "ERROR", "message": f"Fortification requires adding {volume_increase_L:.2f} L of liquid chemicals, which exceeds available space."}
 
-        # The remaining space is filled with water.
-        water_to_add = available_space - volume_increase_L
+        # The final volume is the current volume plus the added liquid chemicals.
+        final_volume = current_volume + volume_increase_L
         
         return {
-            "status": "FORTIFICATION", "add_water": water_to_add,
-            "add_cond": add_cond_ml, "add_cu": add_cu_g, "add_h2o2": add_h2o2_ml,
-            "final_volume": module7_total_volume, "final_cond": target_cond_ml_l,
-            "final_cu": target_cu_g_l, "final_h2o2": target_h2o2_ml_l
+            "status": "FORTIFICATION",
+            "add_water": 0.0, # No filler water is added in this scenario.
+            "add_cond": add_cond_ml,
+            "add_cu": add_cu_g,
+            "add_h2o2": add_h2o2_ml,
+            "final_volume": final_volume,
+            "final_cond": target_cond_ml_l,
+            "final_cu": target_cu_g_l,
+            "final_h2o2": target_h2o2_ml_l
         }
 
 
