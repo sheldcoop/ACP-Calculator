@@ -146,3 +146,94 @@ def display_module3_correction(result: Dict[str, Any]):
     col1.metric("New Tank Volume", f"{final_volume:.2f} L")
     col2.metric("New Conc. of A", f"{final_conc_a:.2f} ml/L")
     col3.metric("New Conc. of B", f"{final_conc_b:.2f} ml/L")
+
+# modules/ui.py
+
+# ... (keep the entire existing content of the file above this line) ...
+# ... (render_makeup_tank_ui, display_makeup_recipe, etc. should remain) ...
+
+
+# --- UI for Tab 3: Sandbox Simulator ---
+
+def render_sandbox_ui() -> Dict[str, Any]:
+    """
+    Renders the UI for the Sandbox Simulator.
+    Returns a dictionary containing all the user inputs from the sliders and number boxes.
+    """
+    st.header("1. Set Your Starting Point")
+    col1, col2, col3 = st.columns(3)
+    
+    start_volume = col1.number_input(
+        "Current Volume in Module 3 (L)",
+        min_value=0.0,
+        max_value=MODULE3_TOTAL_VOLUME,
+        value=100.0,
+        step=10.0,
+        key="sb_start_vol" # sb for sandbox
+    )
+    start_conc_a = col2.number_input(
+        "Measured Conc. of A (ml/L)",
+        min_value=0.0,
+        value=135.0,
+        step=1.0,
+        format="%.1f",
+        key="sb_start_conc_a"
+    )
+    start_conc_b = col3.number_input(
+        "Measured Conc. of B (ml/L)",
+        min_value=0.0,
+        value=55.0,
+        step=1.0,
+        format="%.1f",
+        key="sb_start_conc_b"
+    )
+    
+    available_space = MODULE3_TOTAL_VOLUME - start_volume
+    st.info(f"The tank has **{available_space:.2f} L** of available space.")
+    
+    st.header("2. Interactive Controls")
+    col1, col2 = st.columns(2)
+    
+    water_to_add = col1.slider(
+        "Water to Add (L)",
+        min_value=0.0,
+        max_value=available_space if available_space > 0 else 1.0, # Handle full tank case
+        value=0.0,
+        step=0.5
+    )
+    makeup_to_add = col2.slider(
+        "Makeup Solution to Add (L)",
+        min_value=0.0,
+        max_value=available_space if available_space > 0 else 1.0,
+        value=0.0,
+        step=0.5
+    )
+    
+    # --- Capacity Warning ---
+    total_added = water_to_add + makeup_to_add
+    if total_added > available_space:
+        st.error(f"⚠️ Warning: Total additions ({total_added:.2f} L) exceed available space ({available_space:.2f} L)!")
+    else:
+        st.success("✅ Total additions are within tank capacity.")
+        
+    return {
+        "start_volume": start_volume,
+        "start_conc_a": start_conc_a,
+        "start_conc_b": start_conc_b,
+        "water_to_add": water_to_add,
+        "makeup_to_add": makeup_to_add,
+        "makeup_conc_a": DEFAULT_TARGET_A_ML_L, # Pass these along for the simulation
+        "makeup_conc_b": DEFAULT_TARGET_B_ML_L,
+    }
+
+
+def display_simulation_results(results: Dict[str, float]):
+    """
+    Displays the live results from the sandbox simulation.
+    """
+    st.header("3. Live Results Dashboard")
+    
+    col1, col2, col3 = st.columns(3)
+    col1.metric("New Tank Volume", f"{results['new_volume']:.2f} L")
+    col2.metric("New Conc. of A", f"{results['new_conc_a']:.2f} ml/L")
+    col3.metric("New Conc. of B", f"{results['new_conc_b']:.2f} ml/L")
