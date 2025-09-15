@@ -295,36 +295,53 @@ def calculate_module7_correction(
 
     # --- Scenario 2: Fortification (if ALL concentrations are at or below target) ---
     else:
-        # Correct Logic: Calculate deficit based on the *current volume* of liquid.
+        # Calculate the chemical deficit based on the current volume.
         add_cond_ml = (target_cond_ml_l - current_cond_ml_l) * current_volume
         add_cu_g = (target_cu_g_l - current_cu_g_l) * current_volume
         add_h2o2_ml = (target_h2o2_ml_l - current_h2o2_ml_l) * current_volume
 
-        # Ensure no negative additions if a value is already at target
+        # Ensure additions are non-negative.
         add_cond_ml = max(0, add_cond_ml)
         add_cu_g = max(0, add_cu_g)
         add_h2o2_ml = max(0, add_h2o2_ml)
 
-        # Volume increase is ONLY from liquid chemicals (Conditioner and H2O2).
-        # Solid additions (Cu Etch) are assumed to have negligible volume impact.
+        # The volume increase is from liquid chemicals (Conditioner and H2O2).
+        # Cu Etch is a solid and its volume is considered negligible.
         volume_increase_L = (add_cond_ml + add_h2o2_ml) / 1000.0
-        
-        if volume_increase_L > available_space:
-            return {"status": "ERROR", "message": f"Fortification requires adding {volume_increase_L:.2f} L of liquid chemicals, which exceeds available space."}
 
-        # The final volume is the current volume plus the added liquid chemicals.
+        if volume_increase_L > available_space:
+            return {
+                "status": "ERROR",
+                "message": f"Fortification requires adding {volume_increase_L:.2f} L of liquids, exceeding available space of {available_space:.2f} L."
+            }
+
+        # Calculate the true final state after additions.
         final_volume = current_volume + volume_increase_L
         
+        # Avoid division by zero if the tank is empty.
+        if final_volume < EPSILON:
+            final_cond, final_cu, final_h2o2 = 0, 0, 0
+        else:
+            # Total amount of each chemical = current amount + added amount.
+            final_amount_cond = (current_volume * current_cond_ml_l) + add_cond_ml
+            final_amount_cu = (current_volume * current_cu_g_l) + add_cu_g
+            final_amount_h2o2 = (current_volume * current_h2o2_ml_l) + add_h2o2_ml
+
+            # Final concentration = total amount / final volume.
+            final_cond = final_amount_cond / final_volume
+            final_cu = final_amount_cu / final_volume
+            final_h2o2 = final_amount_h2o2 / final_volume
+
         return {
             "status": "FORTIFICATION",
-            "add_water": 0.0, # No filler water is added in this scenario.
+            "add_water": 0.0,
             "add_cond": add_cond_ml,
             "add_cu": add_cu_g,
             "add_h2o2": add_h2o2_ml,
             "final_volume": final_volume,
-            "final_cond": target_cond_ml_l,
-            "final_cu": target_cu_g_l,
-            "final_h2o2": target_h2o2_ml_l
+            "final_cond": final_cond,
+            "final_cu": final_cu,
+            "final_h2o2": final_h2o2,
         }
 
 

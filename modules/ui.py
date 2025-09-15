@@ -28,55 +28,92 @@ from .config import (
 
 from typing import Optional, List
 
-def display_gauge(label: str, value: float, target: float, unit: str, green_zone: Optional[List[float]] = None):
-    """Displays a gauge chart for a given metric.
+def display_gauge(label: str, value: float, target: float, unit: str, key: str, green_zone: Optional[List[float]] = None):
+    """Displays a sleek, modern gauge chart for a given metric.
 
-    It can operate in two modes:
-    1. Tolerance-based: If `green_zone` is None, it creates green, yellow, and red zones
-       based on a percentage tolerance around the target.
-    2. Hardcoded Zones: If `green_zone` is provided as a list [min, max], it creates a
-       simple green zone for that range and red zones outside of it.
+    This function is designed to provide immediate visual feedback on the status of a
+    chemical concentration or other parameter. It features distinct color-coded zones
+    to indicate whether the current value is within the desired range.
+
+    The gauge can operate in two modes:
+    1.  **Tolerance-based (Default):** If `green_zone` is not provided, the function
+        automatically creates green, yellow, and red zones based on a percentage
+        tolerance around the target value. This is ideal for metrics where a
+        standard deviation from the target is acceptable.
+        - Green: ±5% of the target.
+        - Yellow: Between ±5% and ±10% of the target.
+        - Red: Beyond ±10% of the target.
+    2.  **Hardcoded Zones:** If `green_zone` is provided as a list `[min, max]`,
+        the function creates a single green zone for that specific range and red
+        zones for all values outside of it. This is useful for metrics with
+        strict operational boundaries.
 
     Args:
-        label: The label for the gauge.
-        value: The current value.
-        target: The target value.
-        unit: The unit for the value.
-        green_zone: An optional list defining the boundaries of the green zone.
+        label (str): The title of the gauge (e.g., "Concentration A").
+        value (float): The current measured value to display.
+        target (float): The target value, which is indicated by a black line.
+        unit (str): The unit of measurement (e.g., "ml/L", "g/L").
+        key (str): A unique key for the Streamlit element to prevent duplication errors.
+        green_zone (Optional[List[float]]): A list defining the absolute boundaries
+            for the green zone, e.g., `[100, 140]`.
     """
+    # Define a consistent color scheme for the zones
+    colors = {"red": "#FF4B4B", "yellow": "#FFC300", "green": "#28A745"}
+
     if green_zone:
-        # Mode 2: Hardcoded red/green zones.
+        # Mode 2: Use hardcoded boundaries for red/green zones.
+        max_val = target * 2
         steps = [
-            {'range': [0, green_zone[0]], 'color': "red"},
-            {'range': green_zone, 'color': "green"},
-            {'range': [green_zone[1], target * 2], 'color': "red"}
+            {'range': [0, green_zone[0]], 'color': colors['red']},
+            {'range': green_zone, 'color': colors['green']},
+            # Extend the red zone to a reasonable maximum.
+            {'range': [green_zone[1], max_val], 'color': colors['red']}
         ]
     else:
-        # Mode 1: Tolerance-based zones with orange warnings.
-        tolerance = 0.05 * target  # 5% tolerance
-        dynamic_green_zone = [target - tolerance, target + tolerance]
-        yellow_zone_low = [target - 2 * tolerance, dynamic_green_zone[0]]
-        yellow_zone_high = [dynamic_green_zone[1], target + 2 * tolerance]
+        # Mode 1: Calculate zones based on a 5% tolerance for green and 10% for yellow.
+        tolerance_green = 0.05 * target
+        tolerance_yellow = 0.10 * target
+
+        # Define the boundaries for each colored zone
+        zone_green = [target - tolerance_green, target + tolerance_green]
+        zone_yellow_low = [target - tolerance_yellow, zone_green[0]]
+        zone_yellow_high = [zone_green[1], target + tolerance_yellow]
+        max_val = target * 2 # Set a dynamic upper limit for the gauge axis.
+
         steps = [
-            {'range': [0, yellow_zone_low[0]], 'color': "red"},
-            {'range': yellow_zone_low, 'color': "orange"},
-            {'range': dynamic_green_zone, 'color': "green"},
-            {'range': yellow_zone_high, 'color': "orange"},
-            {'range': [yellow_zone_high[1], target * 2], 'color': "red"}
+            {'range': [0, zone_yellow_low[0]], 'color': colors['red']},
+            {'range': zone_yellow_low, 'color': colors['yellow']},
+            {'range': zone_green, 'color': colors['green']},
+            {'range': zone_yellow_high, 'color': colors['yellow']},
+            {'range': [zone_yellow_high[1], max_val], 'color': colors['red']}
         ]
 
+    # Create the Plotly figure
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=value,
-        title={'text': f"<b>{label}</b><br><span style='font-size:0.8em;color:gray'>{unit}</span>"},
-        number={'suffix': f" / {target:.2f}"},
+        # Display the title and units with improved formatting
+        title={'text': f"<b>{label}</b><br><span style='font-size:0.8em;color:gray'>{unit}</span>", 'align': 'center'},
+        number={'valueformat': '.2f', 'suffix': f" / {target:.2f}"},
         gauge={
-            'axis': {'range': [None, target * 2]},
+            'axis': {'range': [0, max_val], 'tickwidth': 1, 'tickcolor': "darkblue"},
+            'bar': {'color': "rgba(0,0,0,0.1)"}, # A subtle background bar
             'steps': steps,
-            'threshold': {'line': {'color': "black", 'width': 4}, 'thickness': 0.75, 'value': target}
+            'threshold': {
+                'line': {'color': "black", 'width': 4},
+                'thickness': 0.9,
+                'value': target
+            }
         }))
-    fig.update_layout(height=250, margin=dict(l=10, r=10, t=60, b=10))
-    st.plotly_chart(fig, use_container_width=True)
+
+    # Standardize the layout for a clean appearance
+    fig.update_layout(
+        height=250,
+        margin=dict(l=20, r=20, t=80, b=20),
+        font={'color': "darkblue", 'family': "Arial"}
+    )
+    # Use the unique key to render the chart in Streamlit
+    st.plotly_chart(fig, use_container_width=True, key=f"gauge_{key}")
 
 
 # --- Tab 1: Makeup Tank Refill ---
@@ -206,18 +243,20 @@ def display_module3_correction(result: Dict[str, Any]):
         col1, col2 = st.columns(2)
         with col1:
             display_gauge(
-                "Concentration A",
-                final_conc_a,
-                DEFAULT_TARGET_A_ML_L,
-                "ml/L",
+                label="Concentration A",
+                value=final_conc_a,
+                target=DEFAULT_TARGET_A_ML_L,
+                unit="ml/L",
+                key="mod3_corr_gauge_A",
                 green_zone=[100, 140]
             )
         with col2:
             display_gauge(
-                "Concentration B",
-                final_conc_b,
-                DEFAULT_TARGET_B_ML_L,
-                "ml/L",
+                label="Concentration B",
+                value=final_conc_b,
+                target=DEFAULT_TARGET_B_ML_L,
+                unit="ml/L",
+                key="mod3_corr_gauge_B",
                 green_zone=[40, 60]
             )
 
@@ -273,18 +312,20 @@ def display_simulation_results(results: Dict[str, float]):
         col1, col2 = st.columns(2)
         with col1:
             display_gauge(
-                "Concentration A",
-                results['new_conc_a'],
-                DEFAULT_TARGET_A_ML_L,
-                "ml/L",
+                label="Concentration A",
+                value=results['new_conc_a'],
+                target=DEFAULT_TARGET_A_ML_L,
+                unit="ml/L",
+                key="mod3_sand_gauge_A",
                 green_zone=[100, 140]
             )
         with col2:
             display_gauge(
-                "Concentration B",
-                results['new_conc_b'],
-                DEFAULT_TARGET_B_ML_L,
-                "ml/L",
+                label="Concentration B",
+                value=results['new_conc_b'],
+                target=DEFAULT_TARGET_B_ML_L,
+                unit="ml/L",
+                key="mod3_sand_gauge_B",
                 green_zone=[40, 60]
             )
 
@@ -353,11 +394,29 @@ def display_module7_correction(result: Dict[str, Any]):
 
         col1, col2, col3 = st.columns(3)
         with col1:
-            display_gauge("Conditioner", result['final_cond'], MODULE7_TARGET_CONDITION_ML_L, "ml/L")
+            display_gauge(
+                label="Conditioner",
+                value=result['final_cond'],
+                target=MODULE7_TARGET_CONDITION_ML_L,
+                unit="ml/L",
+                key="m7_corr_gauge_cond"
+            )
         with col2:
-            display_gauge("Cu Etch", result['final_cu'], MODULE7_TARGET_CU_ETCH_G_L, "g/L")
+            display_gauge(
+                label="Cu Etch",
+                value=result['final_cu'],
+                target=MODULE7_TARGET_CU_ETCH_G_L,
+                unit="g/L",
+                key="m7_corr_gauge_cu"
+            )
         with col3:
-            display_gauge("H2O2", result['final_h2o2'], MODULE7_TARGET_H2O2_ML_L, "ml/L")
+            display_gauge(
+                label="H2O2",
+                value=result['final_h2o2'],
+                target=MODULE7_TARGET_H2O2_ML_L,
+                unit="ml/L",
+                key="m7_corr_gauge_h2o2"
+            )
 
 # --- Tab 5: Module 7 Sandbox ---
 
@@ -417,8 +476,26 @@ def display_module7_simulation(result: Dict[str, float]):
         st.metric("New Tank Volume", f"{result['new_volume']:.2f} L")
         col1, col2, col3 = st.columns(3)
         with col1:
-            display_gauge("Conditioner", result['new_cond'], MODULE7_TARGET_CONDITION_ML_L, "ml/L")
+            display_gauge(
+                label="Conditioner",
+                value=result['new_cond'],
+                target=MODULE7_TARGET_CONDITION_ML_L,
+                unit="ml/L",
+                key="m7_sand_gauge_cond"
+            )
         with col2:
-            display_gauge("Cu Etch", result['new_cu'], MODULE7_TARGET_CU_ETCH_G_L, "g/L")
+            display_gauge(
+                label="Cu Etch",
+                value=result['new_cu'],
+                target=MODULE7_TARGET_CU_ETCH_G_L,
+                unit="g/L",
+                key="m7_sand_gauge_cu"
+            )
         with col3:
-            display_gauge("H2O2", result['new_h2o2'], MODULE7_TARGET_H2O2_ML_L, "ml/L")
+            display_gauge(
+                label="H2O2",
+                value=result['new_h2o2'],
+                target=MODULE7_TARGET_H2O2_ML_L,
+                unit="ml/L",
+                key="m7_sand_gauge_h2o2"
+            )
