@@ -26,63 +26,54 @@ from .config import (
 
 # --- UI Helper Functions ---
 
-def display_module3_gauge(label: str, value: float, chemical: str):
-    """Displays a custom gauge for Module 3 with hardcoded thresholds."""
-    if chemical == 'A':
-        target = DEFAULT_TARGET_A_ML_L
-        green_zone = [100, 140]
-    elif chemical == 'B':
-        target = DEFAULT_TARGET_B_ML_L
-        green_zone = [45, 70]
-    else:
-        st.error("Invalid chemical for Module 3 gauge.")
-        return
+from typing import Optional, List
 
-    fig = go.Figure(go.Indicator(
-        mode = "gauge+number",
-        value = value,
-        title = {'text': f"<b>{label}</b><br><span style='font-size:0.8em;color:gray'>ml/L</span>"},
-        number = {'suffix': f" / {target:.2f}"},
-        gauge = {
-            'axis': {'range': [None, target * 2]},
-            'steps' : [
-                 {'range': [0, green_zone[0]], 'color': "red"},
-                 {'range': green_zone, 'color': "green"},
-                 {'range': [green_zone[1], target * 2], 'color': "red"}],
-            'threshold' : {'line': {'color': "black", 'width': 4}, 'thickness': 0.75, 'value': target}
-        }))
-    fig.update_layout(height=250, margin=dict(l=10, r=10, t=60, b=10))
-    st.plotly_chart(fig, use_container_width=True)
-
-def display_gauge(label: str, value: float, target: float, unit: str):
+def display_gauge(label: str, value: float, target: float, unit: str, green_zone: Optional[List[float]] = None):
     """Displays a gauge chart for a given metric.
+
+    It can operate in two modes:
+    1. Tolerance-based: If `green_zone` is None, it creates green, yellow, and red zones
+       based on a percentage tolerance around the target.
+    2. Hardcoded Zones: If `green_zone` is provided as a list [min, max], it creates a
+       simple green zone for that range and red zones outside of it.
 
     Args:
         label: The label for the gauge.
         value: The current value.
         target: The target value.
         unit: The unit for the value.
+        green_zone: An optional list defining the boundaries of the green zone.
     """
-    # Define the thresholds for the gauge colors
-    tolerance = 0.05 * target # 5% tolerance
-    green_zone = [target - tolerance, target + tolerance]
-    yellow_zone_low = [target - 2 * tolerance, target - tolerance]
-    yellow_zone_high = [target + tolerance, target + 2 * tolerance]
+    if green_zone:
+        # Mode 2: Hardcoded red/green zones.
+        steps = [
+            {'range': [0, green_zone[0]], 'color': "red"},
+            {'range': green_zone, 'color': "green"},
+            {'range': [green_zone[1], target * 2], 'color': "red"}
+        ]
+    else:
+        # Mode 1: Tolerance-based zones with orange warnings.
+        tolerance = 0.05 * target  # 5% tolerance
+        dynamic_green_zone = [target - tolerance, target + tolerance]
+        yellow_zone_low = [target - 2 * tolerance, dynamic_green_zone[0]]
+        yellow_zone_high = [dynamic_green_zone[1], target + 2 * tolerance]
+        steps = [
+            {'range': [0, yellow_zone_low[0]], 'color': "red"},
+            {'range': yellow_zone_low, 'color': "orange"},
+            {'range': dynamic_green_zone, 'color': "green"},
+            {'range': yellow_zone_high, 'color': "orange"},
+            {'range': [yellow_zone_high[1], target * 2], 'color': "red"}
+        ]
 
     fig = go.Figure(go.Indicator(
-        mode = "gauge+number",
-        value = value,
-        title = {'text': f"<b>{label}</b><br><span style='font-size:0.8em;color:gray'>{unit}</span>"},
-        number = {'suffix': f" / {target:.2f}"},
-        gauge = {
+        mode="gauge+number",
+        value=value,
+        title={'text': f"<b>{label}</b><br><span style='font-size:0.8em;color:gray'>{unit}</span>"},
+        number={'suffix': f" / {target:.2f}"},
+        gauge={
             'axis': {'range': [None, target * 2]},
-            'steps' : [
-                 {'range': [0, yellow_zone_low[0]], 'color': "red"},
-                 {'range': yellow_zone_low, 'color': "orange"},
-                 {'range': green_zone, 'color': "green"},
-                 {'range': yellow_zone_high, 'color': "orange"},
-                 {'range': [yellow_zone_high[1], target * 2], 'color': "red"}],
-            'threshold' : {'line': {'color': "black", 'width': 4}, 'thickness': 0.75, 'value': target}
+            'steps': steps,
+            'threshold': {'line': {'color': "black", 'width': 4}, 'thickness': 0.75, 'value': target}
         }))
     fig.update_layout(height=250, margin=dict(l=10, r=10, t=60, b=10))
     st.plotly_chart(fig, use_container_width=True)
@@ -214,9 +205,21 @@ def display_module3_correction(result: Dict[str, Any]):
 
         col1, col2 = st.columns(2)
         with col1:
-            display_module3_gauge("Concentration A", final_conc_a, "A")
+            display_gauge(
+                "Concentration A",
+                final_conc_a,
+                DEFAULT_TARGET_A_ML_L,
+                "ml/L",
+                green_zone=[100, 140]
+            )
         with col2:
-            display_module3_gauge("Concentration B", final_conc_b, "B")
+            display_gauge(
+                "Concentration B",
+                final_conc_b,
+                DEFAULT_TARGET_B_ML_L,
+                "ml/L",
+                green_zone=[40, 60]
+            )
 
 # --- Tab 3: Module 3 Sandbox ---
 
@@ -269,9 +272,21 @@ def display_simulation_results(results: Dict[str, float]):
 
         col1, col2 = st.columns(2)
         with col1:
-            display_gauge("Concentration A", results['new_conc_a'], DEFAULT_TARGET_A_ML_L, "ml/L")
+            display_gauge(
+                "Concentration A",
+                results['new_conc_a'],
+                DEFAULT_TARGET_A_ML_L,
+                "ml/L",
+                green_zone=[100, 140]
+            )
         with col2:
-            display_gauge("Concentration B", results['new_conc_b'], DEFAULT_TARGET_B_ML_L, "ml/L")
+            display_gauge(
+                "Concentration B",
+                results['new_conc_b'],
+                DEFAULT_TARGET_B_ML_L,
+                "ml/L",
+                green_zone=[40, 60]
+            )
 
 # --- Tab 4: Module 7 Corrector ---
 
@@ -283,13 +298,6 @@ def render_module7_corrector_ui() -> Dict[str, Any]:
     """
     st.header("Module 7 Auto-Corrector")
     st.write("Enter the current status of your tank, and the app will calculate a correction recipe.")
-
-    starter_conc = st.number_input(
-        "Concentration of your 'CupraEtch Starter' liquid (g/L)",
-        min_value=0.1, value=200.0, step=10.0,
-        key="m7_auto_starter_conc",
-        help="Enter the g/L concentration of the stock solution you pour from."
-    )
 
     with st.form(key="m7_corr_form"):
         auto_inputs = {}
@@ -309,7 +317,6 @@ def render_module7_corrector_ui() -> Dict[str, Any]:
 
         auto_inputs['submitted'] = st.form_submit_button("Calculate Correction")
 
-    auto_inputs['starter_conc'] = starter_conc
     return auto_inputs
 
 def display_module7_correction(result: Dict[str, Any]):
@@ -332,7 +339,7 @@ def display_module7_correction(result: Dict[str, Any]):
                 col3,
             ) = st.columns(3)
             col1.metric("Add 'Conditioner'", f"{result['add_cond']:.1f} ml")
-            col2.metric("Add 'Cu Etch' Starter", f"{result['add_cu_L']:.2f} L")
+            col2.metric("Add 'Cu Etch'", f"{result['add_cu']:.1f} g")
             col3.metric("Add 'H2O2'", f"{result['add_h2o2']:.1f} ml")
         elif status == "ERROR":
             st.error(f"❌ {result.get('message', 'An unknown error occurred.')}")
@@ -359,13 +366,6 @@ def render_module7_sandbox_ui() -> Dict[str, Any]:
     st.header("Module 7 Sandbox Simulator")
     st.write("Use the sliders to explore how different additions affect the final concentrations.")
     
-    starter_conc = st.number_input(
-        "Concentration of your 'CupraEtch Starter' liquid (g/L)",
-        min_value=0.1, value=200.0, step=10.0,
-        key="m7_sb_starter_conc",
-        help="Enter the g/L concentration of the stock solution you pour from."
-    )
-
     sandbox_inputs = {}
     col1, col2, col3, col4 = st.columns(4)
     sandbox_inputs['start_volume'] = col1.number_input(
@@ -393,19 +393,15 @@ def render_module7_sandbox_ui() -> Dict[str, Any]:
     sandbox_inputs['add_cond_L'] = col2.slider(
         "Conditioner to Add (L)", 0.0, 10.0, 0.0, 0.1, key="m7_sand_slider_cond"
     )
-    sandbox_inputs['add_cu_L'] = col3.slider(
-        "'Cu Etch' Starter to Add (L)", # Label changed to Liters
-        0.0, 10.0, 0.0, 0.1,             # Range changed to Liters
-        key="m7_slider_cu_L"
+    sandbox_inputs['add_cu'] = col3.slider(
+        "'Cu Etch' to Add (grams)", 0, 5000, 0, 100, key="m7_sand_slider_cu"
     )
     sandbox_inputs['add_h2o2'] = col4.slider(
         "'H2O2' to Add (ml)", 0, 2000, 0, 50, key="m7_sand_slider_h2o2"
     )
     
-    sandbox_inputs['starter_conc'] = starter_conc
-
     # --- Capacity Check ---
-    liquid_added = sandbox_inputs['add_water'] + sandbox_inputs['add_cond_L'] + (sandbox_inputs['add_h2o2'] / 1000.0) + sandbox_inputs['add_cu_L']
+    liquid_added = sandbox_inputs['add_water'] + sandbox_inputs['add_cond_L'] + (sandbox_inputs['add_h2o2'] / 1000.0)
     if liquid_added > available_space:
         st.error(f"⚠️ Warning: Total liquid additions ({liquid_added:.2f} L) exceed available space ({available_space:.2f} L)!")
 
