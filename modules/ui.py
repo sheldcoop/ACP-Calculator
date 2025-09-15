@@ -8,7 +8,8 @@ from .config import (
     DEFAULT_TANK_VOLUME,
     DEFAULT_TARGET_A_ML_L,
     DEFAULT_TARGET_B_ML_L,
-    MODULE3_TOTAL_VOLUME
+    MODULE3_TOTAL_VOLUME,
+    MODULE7_TOTAL_VOLUME 
 )
 
 # --- UI for Tab 1: Makeup Tank Refill Calculator (UNCHANGED) ---
