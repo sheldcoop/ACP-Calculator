@@ -22,6 +22,7 @@ def main():
     # --- Page Configuration ---
     st.set_page_config(page_title=APP_TITLE, layout="wide")
     st.title(APP_TITLE)
+    # The line using APP_INSTRUCTIONS has been removed.
     st.markdown("---")
 
     # --- Create the Tabbed Interface ---
@@ -29,28 +30,16 @@ def main():
 
     # --- Logic for the first tab: Makeup Tank Refill Calculator ---
     with tab1:
-        # Get user inputs from the UI function
         makeup_inputs = render_makeup_tank_ui()
-        
-        # Perform the calculation
         makeup_recipe = calculate_refill_recipe(**makeup_inputs)
-        
         st.markdown("---")
-
-        # Display the results
         display_makeup_recipe(makeup_recipe)
 
     # --- Logic for the second tab: Module 3 Corrector ---
     with tab2:
-        # Get user inputs from the UI function
         module3_inputs = render_module3_ui()
-        
-        # Perform the calculation
         correction_result = calculate_module3_correction(**module3_inputs)
-
         st.markdown("---")
-        
-        # Display the results
         display_module3_correction(correction_result)
 
 
