@@ -8,6 +8,9 @@
 
 import streamlit as st
 from typing import Dict, Any
+import plotly.graph_objects as go
+import pandas as pd
+import altair as alt
 
 # Import the default values and constants from the config file
 from .config import (
@@ -23,52 +26,65 @@ from .config import (
 
 # --- UI Helper Functions ---
 
-def get_status_color(value: float, target: float, tolerance_pct: float = 5.0) -> str:
-    """Determines a status color based on deviation from a target.
+def display_gauge(label: str, value: float, target: float, unit: str):
+    """Displays a gauge chart for a given metric.
 
     Args:
+        label: The label for the gauge.
         value: The current value.
         target: The target value.
-        tolerance_pct: The percentage tolerance for a 'good' status.
-
-    Returns:
-        A string representing the color ('green', 'orange', or 'red').
+        unit: The unit for the value.
     """
-    if target == 0:
-        return "green" if value == 0 else "red"
+    # Define the thresholds for the gauge colors
+    tolerance = 0.05 * target # 5% tolerance
+    green_zone = [target - tolerance, target + tolerance]
+    yellow_zone_low = [target - 2 * tolerance, target - tolerance]
+    yellow_zone_high = [target + tolerance, target + 2 * tolerance]
 
-    deviation = abs(value - target) / target * 100
-    if deviation <= tolerance_pct:
-        return "green"
-    elif deviation <= tolerance_pct * 2:
-        return "orange"
-    else:
-        return "red"
+    fig = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = value,
+        title = {'text': f"<b>{label}</b><br><span style='font-size:0.8em;color:gray'>{unit}</span>"},
+        number = {'suffix': f" / {target:.2f}"},
+        gauge = {
+            'axis': {'range': [None, target * 2]},
+            'steps' : [
+                 {'range': [0, yellow_zone_low[0]], 'color': "red"},
+                 {'range': yellow_zone_low, 'color': "orange"},
+                 {'range': green_zone, 'color': "green"},
+                 {'range': yellow_zone_high, 'color': "orange"},
+                 {'range': [yellow_zone_high[1], target * 2], 'color': "red"}],
+            'threshold' : {'line': {'color': "black", 'width': 4}, 'thickness': 0.75, 'value': target}
+        }))
+    fig.update_layout(height=250, margin=dict(l=10, r=10, t=60, b=10))
+    st.plotly_chart(fig, use_container_width=True)
 
-def styled_metric(label: str, value: float, unit: str, target: float):
-    """Displays a metric with a visual status bar.
+def display_simulation_chart(label: str, start_val: float, end_val: float, target_val: float, unit: str):
+    """Displays a bar chart comparing start, end, and target values.
 
     Args:
-        label: The label for the metric.
-        value: The value of the metric.
-        unit: The unit for the value.
-        target: The target value for calculating the status.
+        label: The title for the chart.
+        start_val: The starting value.
+        end_val: The final (simulated) value.
+        target_val: The target value.
+        unit: The unit for the values.
     """
-    color = get_status_color(value, target)
+    source = pd.DataFrame({
+        'Category': ['Current', 'Simulated'],
+        'Value': [start_val, end_val]
+    })
 
-    st.markdown(f"**{label}**")
-    st.markdown(
-        f"""
-        <div style="display: flex; align-items: center;">
-            <div style="width: 10px; height: 30px; background-color: {color}; margin-right: 10px; border-radius: 2px;"></div>
-            <div>
-                <span style="font-size: 1.5em; font-weight: bold;">{value:.2f}</span>
-                <span style="font-size: 0.9em; color: #888; margin-left: 5px;">{unit}</span>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    bar_chart = alt.Chart(source).mark_bar().encode(
+        x='Category',
+        y=alt.Y('Value', title=f"{label} ({unit})"),
+        color='Category'
+    ).properties(
+        width=alt.Step(80) # Bar width
     )
+
+    target_line = alt.Chart(pd.DataFrame({'y': [target_val]})).mark_rule(color='red', strokeDash=[5,5]).encode(y='y')
+
+    st.altair_chart(bar_chart + target_line, use_container_width=True)
 
 # --- Tab 1: Makeup Tank Refill ---
 
@@ -191,13 +207,14 @@ def display_module3_correction(result: Dict[str, Any]):
 
         st.header("3. Final Predicted State")
         final_volume, final_conc_a, final_conc_b = result.get("final_volume", 0), result.get("final_conc_a", 0), result.get("final_conc_b", 0)
-        col1, col2, col3 = st.columns(3)
+
+        st.metric("New Tank Volume", f"{final_volume:.2f} L")
+
+        col1, col2 = st.columns(2)
         with col1:
-            st.metric("New Tank Volume", f"{final_volume:.2f} L")
+            display_gauge("Concentration A", final_conc_a, DEFAULT_TARGET_A_ML_L, "ml/L")
         with col2:
-            styled_metric("New Conc. of A", final_conc_a, "ml/L", DEFAULT_TARGET_A_ML_L)
-        with col3:
-            styled_metric("New Conc. of B", final_conc_b, "ml/L", DEFAULT_TARGET_B_ML_L)
+            display_gauge("Concentration B", final_conc_b, DEFAULT_TARGET_B_ML_L, "ml/L")
 
 # --- Tab 3: Module 3 Sandbox ---
 
@@ -239,20 +256,21 @@ def render_sandbox_ui() -> Dict[str, Any]:
         "makeup_conc_a_ml_l": DEFAULT_TARGET_A_ML_L, "makeup_conc_b_ml_l": DEFAULT_TARGET_B_ML_L
     }
 
-def display_simulation_results(results: Dict[str, float]):
+def display_simulation_results(results: Dict[str, float], start_concs: Dict[str, float]):
     """Displays the live results of the Module 3 sandbox simulation.
 
     Args:
         results: A dictionary containing the calculated results from the backend.
+        start_concs: A dictionary containing the starting concentrations for comparison.
     """
     with st.expander("Live Results Dashboard", expanded=True):
-        col1, col2, col3 = st.columns(3)
+        st.metric("New Tank Volume", f"{results['new_volume']:.2f} L")
+
+        col1, col2 = st.columns(2)
         with col1:
-            st.metric("New Tank Volume", f"{results['new_volume']:.2f} L")
+            display_simulation_chart("Concentration A", start_concs['a'], results['new_conc_a'], DEFAULT_TARGET_A_ML_L, "ml/L")
         with col2:
-            styled_metric("New Conc. of A", results['new_conc_a'], "ml/L", DEFAULT_TARGET_A_ML_L)
-        with col3:
-            styled_metric("New Conc. of B", results['new_conc_b'], "ml/L", DEFAULT_TARGET_B_ML_L)
+            display_simulation_chart("Concentration B", start_concs['b'], results['new_conc_b'], DEFAULT_TARGET_B_ML_L, "ml/L")
 
 # --- Tab 4: Module 7 Corrector ---
 
@@ -315,15 +333,15 @@ def display_module7_correction(result: Dict[str, Any]):
             return
 
         st.subheader("Final Predicted State")
-        col1, col2, col3, col4 = st.columns(4)
+        st.metric("New Tank Volume", f"{result['final_volume']:.2f} L")
+
+        col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("New Tank Volume", f"{result['final_volume']:.2f} L")
+            display_gauge("Conditioner", result['final_cond'], MODULE7_TARGET_CONDITION_ML_L, "ml/L")
         with col2:
-            styled_metric("New 'Conditioner'", result['final_cond'], "ml/L", MODULE7_TARGET_CONDITION_ML_L)
+            display_gauge("Cu Etch", result['final_cu'], MODULE7_TARGET_CU_ETCH_G_L, "g/L")
         with col3:
-            styled_metric("New 'Cu Etch'", result['final_cu'], "g/L", MODULE7_TARGET_CU_ETCH_G_L)
-        with col4:
-            styled_metric("New 'H2O2'", result['final_h2o2'], "ml/L", MODULE7_TARGET_H2O2_ML_L)
+            display_gauge("H2O2", result['final_h2o2'], MODULE7_TARGET_H2O2_ML_L, "ml/L")
 
 # --- Tab 5: Module 7 Sandbox ---
 
@@ -373,19 +391,19 @@ def render_module7_sandbox_ui() -> Dict[str, Any]:
 
     return sandbox_inputs
 
-def display_module7_simulation(result: Dict[str, float]):
+def display_module7_simulation(result: Dict[str, float], start_concs: Dict[str, float]):
     """Displays the live results of the Module 7 sandbox simulation.
 
     Args:
         result: A dictionary containing the calculated results from the backend.
+        start_concs: A dictionary containing the starting concentrations for comparison.
     """
     with st.expander("Sandbox Live Results", expanded=True):
-        col1, col2, col3, col4 = st.columns(4)
+        st.metric("New Tank Volume", f"{result['new_volume']:.2f} L")
+        col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("New Tank Volume", f"{result['new_volume']:.2f} L")
+            display_simulation_chart("Conditioner", start_concs['cond'], result['new_cond'], MODULE7_TARGET_CONDITION_ML_L, "ml/L")
         with col2:
-            styled_metric("New 'Conditioner'", result['new_cond'], "ml/L", MODULE7_TARGET_CONDITION_ML_L)
+            display_simulation_chart("Cu Etch", start_concs['cu'], result['new_cu'], MODULE7_TARGET_CU_ETCH_G_L, "g/L")
         with col3:
-            styled_metric("New 'Cu Etch'", result['new_cu'], "g/L", MODULE7_TARGET_CU_ETCH_G_L)
-        with col4:
-            styled_metric("New 'H2O2'", result['new_h2o2'], "ml/L", MODULE7_TARGET_H2O2_ML_L)
+            display_simulation_chart("H2O2", start_concs['h2o2'], result['new_h2o2'], MODULE7_TARGET_H2O2_ML_L, "ml/L")

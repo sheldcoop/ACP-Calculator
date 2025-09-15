@@ -85,7 +85,7 @@ def main():
         }
         simulation_results = simulate_addition(**sim_args)
         st.markdown("---")
-        display_simulation_results(simulation_results)
+        display_simulation_results(simulation_results, start_concs={'a': sandbox_inputs["start_conc_a"], 'b': sandbox_inputs["start_conc_b"]})
 
     # --- Tab 4: Module 7 Corrector ---
     with tab4:
@@ -124,7 +124,7 @@ def main():
         }
         sim_results = simulate_module7_addition(**sim_args)
         st.markdown("---")
-        display_module7_simulation(sim_results)
+        display_module7_simulation(sim_results, start_concs={'cond': sandbox_inputs['start_cond'], 'cu': sandbox_inputs['start_cu'], 'h2o2': sandbox_inputs['start_h2o2']})
 
 
 if __name__ == "__main__":
