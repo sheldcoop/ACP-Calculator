@@ -47,7 +47,7 @@ def calculate_refill_recipe(
     return {"add_a": add_a, "add_b": add_b, "add_water": add_water, "error": None}
 
 
-# --- CALCULATOR 2: For the Module 3 Correction (FINAL ROBUST LOGIC) ---
+# --- CALCULATOR 2: For the Module 3 Correction (NEW SIMPLIFIED LOGIC) ---
 
 def calculate_module3_correction(
     current_volume: float,
@@ -58,97 +58,55 @@ def calculate_module3_correction(
     module3_total_volume: float,
 ) -> Dict[str, Union[float, str]]:
     """
-    Calculates the optimal blend or best possible correction for the Module 3 tank.
-    This version includes intelligent fallback logic.
+    Calculates the precise amount of water needed to correct high concentrations.
+    This version focuses only on the dilution scenario.
     """
-    # --- Check for perfect match first ---
-    if (math.isclose(measured_conc_a_ml_l, makeup_conc_a_ml_l) and 
-        math.isclose(measured_conc_b_ml_l, makeup_conc_b_ml_l)):
-        return {"status": "PERFECT", "message": "Concentrations are already at the target values."}
-
     # --- Define terms for clarity ---
     c_curr_a, c_curr_b = measured_conc_a_ml_l, measured_conc_b_ml_l
-    c_make_a, c_make_b = makeup_conc_a_ml_l, makeup_conc_b_ml_l
-    available_space = max(0, module3_total_volume - current_volume)
-
-    # --- Attempt to solve for a perfect blend ---
-    is_perfect_possible = False
-    v_water_ideal = 0.0
-    v_makeup_ideal = 0.0
+    c_target_a, c_target_b = makeup_conc_a_ml_l, makeup_conc_b_ml_l
     
-    # Using system of equations. Denominator for makeup volume calculation.
-    denominator = (c_make_a - c_curr_a) * c_make_b - (c_make_b - c_curr_b) * c_make_a
-    if not math.isclose(denominator, 0):
-        # This formula solves for the ideal amount of makeup to add
-        v_makeup_ideal = (current_volume * (c_curr_b - c_curr_a) * c_make_a) / denominator
-        
-        # This formula solves for the ideal amount of water to add
-        if not math.isclose(c_make_b, 0):
-             v_water_ideal = (v_makeup_ideal * (c_make_b - c_make_a) + current_volume * (c_curr_b - c_make_b)) / -c_make_b
-        
-        if v_water_ideal >= -1e-9 and v_makeup_ideal >= -1e-9: # Use tolerance for float precision
-            is_perfect_possible = True
+    # --- Check if concentrations are high ---
+    is_a_high = c_curr_a > c_target_a
+    is_b_high = c_curr_b > c_target_b
 
-    # --- Determine the final recipe based on possibilities and constraints ---
-    v_water_final, v_makeup_final = 0.0, 0.0
-    status = ""
+    # If neither concentration is high, no action is needed for this simplified calculator.
+    if not is_a_high and not is_b_high:
+        return {
+            "status": "OK",
+            "message": "Concentrations are not high. No dilution needed."
+        }
+
+    # --- Calculate water needed to correct each chemical individually ---
+    water_for_a = 0.0
+    if is_a_high:
+        # Formula: V_water = V_current * (C_current / C_target - 1)
+        water_for_a = current_volume * (c_curr_a / c_target_a - 1)
     
-    if is_perfect_possible:
-        ideal_total_add = v_water_ideal + v_makeup_ideal
-        if ideal_total_add > 0 and ideal_total_add <= available_space + 1e-9:
-            status = "PERFECT_CORRECTION"
-            v_water_final, v_makeup_final = v_water_ideal, v_makeup_ideal
-        else:
-            status = "BEST_POSSIBLE_CORRECTION"
-            scaling_factor = available_space / ideal_total_add if ideal_total_add > 0 else 0
-            v_water_final = v_water_ideal * scaling_factor
-            v_makeup_final = v_makeup_ideal * scaling_factor
-    else:
-        # --- NEW INTELLIGENT FALLBACK LOGIC ---
-        status = "BEST_POSSIBLE_CORRECTION"
-        is_a_high = c_curr_a > c_make_a
-        is_b_high = c_curr_b > c_make_b
-        is_a_low = c_curr_a < c_make_a
-        is_b_low = c_curr_b < c_make_b
+    water_for_b = 0.0
+    if is_b_high:
+        water_for_b = current_volume * (c_curr_b / c_target_b - 1)
 
-        if (is_a_high or is_b_high) and not (is_a_low or is_b_low):
-            # Case 1: At least one is high, and NONE are low (Dilution is the only sensible action)
-            water_for_a = 0
-            if is_a_high:
-                water_for_a = current_volume * (c_curr_a / c_make_a - 1)
-            
-            water_for_b = 0
-            if is_b_high:
-                water_for_b = current_volume * (c_curr_b / c_make_b - 1)
-            
-            # Add the minimum water needed to fix the worst offender
-            ideal_water = max(water_for_a, water_for_b)
-            v_water_final = min(ideal_water, available_space) # Can't add more than available space
-            v_makeup_final = 0.0
+    # --- Determine the minimum required water to fix the worst offender ---
+    water_to_add = max(water_for_a, water_for_b)
 
-        elif (is_a_low or is_b_low) and not (is_a_high or is_b_high):
-            # Case 2: At least one is low, and NONE are high (Fortification is the only sensible action)
-            v_water_final = 0.0
-            v_makeup_final = available_space
-        else:
-            # Case 3: Mixed case (e.g., one high, one low) or other complex scenarios.
-            # Here, the most robust "do no harm" approach is to fortify to fix the low one.
-            # This is because over-diluting is often worse than being slightly over-concentrated.
-            v_water_final = 0.0
-            v_makeup_final = available_space
+    # --- Check if the correction is possible within the tank's capacity ---
+    final_volume = current_volume + water_to_add
+    if final_volume > module3_total_volume:
+        return {
+            "status": "ERROR",
+            "message": f"Correction requires adding {water_to_add:.2f} L of water, which would exceed the tank's max volume of {module3_total_volume:.2f} L."
+        }
 
-
-    # --- Calculate the final resulting state of the tank ---
-    final_volume = current_volume + v_water_final + v_makeup_final
-    final_amount_a = (current_volume * c_curr_a) + (v_makeup_final * c_make_a)
-    final_amount_b = (current_volume * c_curr_b) + (v_makeup_final * c_make_b)
+    # --- Calculate the final state of the tank after adding the water ---
+    final_amount_a = current_volume * c_curr_a
+    final_amount_b = current_volume * c_curr_b
     final_conc_a = final_amount_a / final_volume if final_volume > 0 else 0
     final_conc_b = final_amount_b / final_volume if final_volume > 0 else 0
 
     return {
-        "status": status,
-        "add_water": v_water_final,
-        "add_makeup": v_makeup_final,
+        "status": "DILUTION_REQUIRED",
+        "add_water": water_to_add,
+        "add_makeup": 0.0, # Not used in this scenario
         "final_volume": final_volume,
         "final_conc_a": final_conc_a,
         "final_conc_b": final_conc_b,
