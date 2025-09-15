@@ -100,7 +100,7 @@ def render_module7_corrector_ui() -> Dict[str, Any]:
     auto_inputs = {}
     col1, col2, col3, col4 = st.columns(4)
     auto_inputs['current_volume'] = col1.number_input("Current Volume (L)", min_value=0.0, max_value=MODULE7_TOTAL_VOLUME, value=180.0, step=10.0, key="m7_auto_vol")
-    auto_inputs['current_cond'] = col2.number_input("Measured 'Condition' (ml/L)", min_value=0.0, value=175.0, step=1.0, key="m7_auto_cond")
+    auto_inputs['current_cond'] = col2.number_input("Measured 'Conditioner' (ml/L)", min_value=0.0, value=175.0, step=1.0, key="m7_auto_cond")
     auto_inputs['current_cu'] = col3.number_input("Measured 'Cu Etch' (g/L)", min_value=0.0, value=22.0, step=0.1, format="%.1f", key="m7_auto_cu")
     auto_inputs['current_h2o2'] = col4.number_input("Measured 'H2O2' (ml/L)", min_value=0.0, value=6.0, step=0.1, format="%.1f", key="m7_auto_h2o2")
     return auto_inputs
@@ -114,7 +114,7 @@ def display_module7_correction(result: Dict[str, Any]):
     elif status == "FORTIFICATION":
         st.success("✅ Fortification Required: All concentrations are low.")
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Add 'Condition'", f"{result['add_cond']:.1f} ml")
+        col1.metric("Add 'Conditioner'", f"{result['add_cond']:.1f} ml")
         col2.metric("Add 'Cu Etch'", f"{result['add_cu']:.1f} g")
         col3.metric("Add 'H2O2'", f"{result['add_h2o2']:.1f} ml")
         col4.metric("Add Filler Water", f"{result['add_water']:.2f} L")
