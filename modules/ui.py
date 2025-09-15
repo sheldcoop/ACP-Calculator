@@ -237,3 +237,98 @@ def display_simulation_results(results: Dict[str, float]):
     col1.metric("New Tank Volume", f"{results['new_volume']:.2f} L")
     col2.metric("New Conc. of A", f"{results['new_conc_a']:.2f} ml/L")
     col3.metric("New Conc. of B", f"{results['new_conc_b']:.2f} ml/L")
+
+# modules/ui.py
+
+# ... (keep all the existing content of the file above this line) ...
+
+
+# --- UI for Tab 4: Module 7 Corrector & Simulator ---
+
+def render_module7_ui() -> Dict[str, Any]:
+    """
+    Renders the combined UI for the Module 7 Auto-Corrector and Sandbox Simulator.
+    Returns a dictionary containing all user inputs from the page.
+    """
+    # --- Part 1: Auto-Corrector ---
+    st.header("1. Module 7 Auto-Corrector")
+    st.write("Enter the current status of your tank, and the app will calculate a correction recipe.")
+    
+    auto_inputs = {}
+    col1, col2, col3, col4 = st.columns(4)
+    auto_inputs['current_volume'] = col1.number_input("Current Volume (L)", min_value=0.0, max_value=MODULE7_TOTAL_VOLUME, value=180.0, step=10.0, key="m7_auto_vol")
+    auto_inputs['current_cond'] = col2.number_input("Measured 'Condition' (ml/L)", min_value=0.0, value=175.0, step=1.0, key="m7_auto_cond")
+    auto_inputs['current_cu'] = col3.number_input("Measured 'Cu Etch' (g/L)", min_value=0.0, value=22.0, step=0.1, format="%.1f", key="m7_auto_cu")
+    auto_inputs['current_h2o2'] = col4.number_input("Measured 'H2O2' (ml/L)", min_value=0.0, value=6.0, step=0.1, format="%.1f", key="m7_auto_h2o2")
+    
+    st.markdown("---")
+
+    # --- Part 2: Sandbox Simulator ---
+    st.header("2. Module 7 Sandbox Simulator")
+    st.write("Use the sliders to explore how different additions affect the final concentrations.")
+    
+    sandbox_inputs = {}
+    col1, col2, col3, col4 = st.columns(4)
+    sandbox_inputs['start_volume'] = col1.number_input("Start Volume (L)", min_value=0.0, max_value=MODULE7_TOTAL_VOLUME, value=180.0, step=10.0, key="m7_sb_vol")
+    sandbox_inputs['start_cond'] = col2.number_input("Start 'Condition' (ml/L)", min_value=0.0, value=175.0, step=1.0, key="m7_sb_cond")
+    sandbox_inputs['start_cu'] = col3.number_input("Start 'Cu Etch' (g/L)", min_value=0.0, value=22.0, step=0.1, format="%.1f", key="m7_sb_cu")
+    sandbox_inputs['start_h2o2'] = col4.number_input("Start 'H2O2' (ml/L)", min_value=0.0, value=6.0, step=0.1, format="%.1f", key="m7_sb_h2o2")
+    
+    available_space = MODULE7_TOTAL_VOLUME - sandbox_inputs['start_volume']
+    st.info(f"The sandbox tank has **{available_space:.2f} L** of available space for LIQUID additions.")
+
+    # Interactive Sliders
+    col1, col2, col3, col4 = st.columns(4)
+    sandbox_inputs['add_water'] = col1.slider("Water to Add (L)", 0.0, available_space if available_space > 0 else 1.0, 0.0, 0.5)
+    sandbox_inputs['add_cond'] = col2.slider("'Condition' to Add (ml)", 0, 10000, 0, 100)
+    sandbox_inputs['add_cu'] = col3.slider("'Cu Etch' to Add (grams)", 0, 5000, 0, 100)
+    sandbox_inputs['add_h2o2'] = col4.slider("'H2O2' to Add (ml)", 0, 2000, 0, 50)
+    
+    # Capacity Check for Sandbox
+    liquid_added = sandbox_inputs['add_water'] + (sandbox_inputs['add_cond'] / 1000.0) + (sandbox_inputs['add_h2o2'] / 1000.0)
+    if liquid_added > available_space:
+        st.error(f"⚠️ Warning: Total liquid additions ({liquid_added:.2f} L) exceed available space ({available_space:.2f} L)!")
+
+    # Return a combined dictionary with clearly named sections
+    return {
+        "auto_inputs": auto_inputs,
+        "sandbox_inputs": sandbox_inputs,
+    }
+
+
+def display_module7_correction(result: Dict[str, Any]):
+    """Displays the recipe from the Module 7 Auto-Corrector."""
+    st.header("Auto-Corrector Recipe & Final Result")
+    status = result.get("status")
+
+    if status == "DILUTION":
+        st.success("✅ Dilution Required: At least one concentration is too high.")
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Add Water", f"{result['add_water']:.2f} L")
+    elif status == "FORTIFICATION":
+        st.success("✅ Fortification Required: All concentrations are low.")
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Add 'Condition'", f"{result['add_cond']:.1f} ml")
+        col2.metric("Add 'Cu Etch'", f"{result['add_cu']:.1f} g")
+        col3.metric("Add 'H2O2'", f"{result['add_h2o2']:.1f} ml")
+        col4.metric("Add Filler Water", f"{result['add_water']:.2f} L")
+    elif status == "ERROR":
+        st.error(f"❌ {result.get('message', 'An error occurred.')}")
+        return
+
+    # Display Final Results
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("New Tank Volume", f"{result['final_volume']:.2f} L")
+    col2.metric("New 'Condition'", f"{result['final_cond']:.2f} ml/L")
+    col3.metric("New 'Cu Etch'", f"{result['final_cu']:.2f} g/L")
+    col4.metric("New 'H2O2'", f"{result['final_h2o2']:.2f} ml/L")
+
+
+def display_module7_simulation(result: Dict[str, float]):
+    """Displays the live results from the Module 7 Sandbox Simulator."""
+    st.header("Sandbox Live Results")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("New Tank Volume", f"{result['new_volume']:.2f} L")
+    col2.metric("New 'Condition'", f"{result['new_cond']:.2f} ml/L")
+    col3.metric("New 'Cu Etch'", f"{result['new_cu']:.2f} g/L")
+    col4.metric("New 'H2O2'", f"{result['new_h2o2']:.2f} ml/L")
