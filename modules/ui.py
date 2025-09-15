@@ -11,7 +11,7 @@ from .config import (
     MODULE3_TOTAL_VOLUME
 )
 
-# --- UI for Tab 1: Makeup Tank Refill Calculator ---
+# --- UI for Tab 1: Makeup Tank Refill Calculator (UNCHANGED) ---
 
 def render_makeup_tank_ui():
     """
@@ -70,12 +70,11 @@ def display_makeup_recipe(recipe: Dict[str, Any]):
     st.info(f"Total volume to be added: **{total_added:.2f} L**")
 
 
-# --- UI for Tab 2: Module 3 Corrector ---
+# --- UI for Tab 2: Module 3 Corrector (NEW DISPLAY LOGIC) ---
 
 def render_module3_ui():
     """
     Renders the UI for the Module 3 calculator and returns a dictionary of inputs.
-    Note: The target concentrations are fixed from the Makeup Tank defaults.
     """
     st.header("1. Module 3 Current Status")
     col1, col2, col3 = st.columns(3)
@@ -90,7 +89,7 @@ def render_module3_ui():
     measured_conc_a = col2.number_input(
         "Measured Conc. of A (ml/L)",
         min_value=0.0,
-        value=135.0,
+        value=150.0, # The "mixed" scenario from our test case
         step=1.0,
         format="%.1f",
         key="mod3_conc_a"
@@ -98,7 +97,7 @@ def render_module3_ui():
     measured_conc_b = col3.number_input(
         "Measured Conc. of B (ml/L)",
         min_value=0.0,
-        value=65.0,
+        value=45.0, # The "mixed" scenario from our test case
         step=1.0,
         format="%.1f",
         key="mod3_conc_b"
@@ -116,25 +115,34 @@ def render_module3_ui():
     }
 
 def display_module3_correction(result: Dict[str, Any]):
-    """Displays the correction recipe for Module 3."""
+    """Displays the optimal correction recipe for Module 3."""
     st.header("2. Correction Recipe")
-    correction_type = result.get("correction_type")
+    status = result.get("status")
 
-    if correction_type == "DILUTE":
-        st.success("✅ Dilution Required: Concentration is too high.")
-        water_to_add = result['water_to_add']
-        st.metric("Action: Add Water", f"{water_to_add:.2f} L")
-        st.warning("Note: Adding water will increase the total volume in the tank.")
+    if status == "PERFECT":
+        st.success(f"✅ {result.get('message')}")
+        return
+
+    # --- Display the Recipe ---
+    add_water = result.get("add_water", 0)
+    add_makeup = result.get("add_makeup", 0)
+
+    if status == "PERFECT_CORRECTION":
+        st.success("✅ A perfect correction is possible by filling the tank.")
+    elif status == "BEST_POSSIBLE_CORRECTION":
+        st.warning("⚠️ A perfect correction is not possible. The recipe below provides the best possible correction by topping up the tank.")
     
-    elif correction_type == "FORTIFY":
-        st.success("✅ Fortification Required: Concentration is too low.")
-        volume_to_replace = result['volume_to_replace']
-        st.metric("Action: Drain & Replace", f"{volume_to_replace:.2f} L")
-        st.write(f"1. **Drain {volume_to_replace:.2f} L** of the current solution from Module 3.")
-        st.write(f"2. **Add {volume_to_replace:.2f} L** of fresh solution from the Makeup Tank.")
+    col1, col2 = st.columns(2)
+    col1.metric("Action: Add Makeup Solution", f"{add_makeup:.2f} L")
+    col2.metric("Action: Add Water", f"{add_water:.2f} L")
     
-    elif correction_type == "NONE":
-        st.success("✅ Concentrations are correct. No action needed.")
-    
-    elif correction_type == "ERROR":
-        st.error(f"❌ {result.get('message', 'An unknown error occurred.')}")
+    # --- Display the Final Result ---
+    st.subheader("3. Final Result")
+    final_volume = result.get("final_volume", 0)
+    final_conc_a = result.get("final_conc_a", 0)
+    final_conc_b = result.get("final_conc_b", 0)
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("New Tank Volume", f"{final_volume:.2f} L")
+    col2.metric("New Conc. of A", f"{final_conc_a:.2f} ml/L")
+    col3.metric("New Conc. of B", f"{final_conc_b:.2f} ml/L")
