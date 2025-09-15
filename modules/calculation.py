@@ -165,3 +165,109 @@ def simulate_addition(
         "new_conc_a": final_conc_a,
         "new_conc_b": final_conc_b,
     }
+
+# modules/calculation.py
+
+# ... (keep all the existing content of the file above this line) ...
+# ... (all previous functions for the Makeup Tank and Module 3 should remain) ...
+
+
+# --- CALCULATORS for Module 7 ---
+
+def calculate_module7_correction(
+    current_volume: float,
+    current_cond_ml_l: float,
+    current_cu_g_l: float,
+    current_h2o2_ml_l: float,
+    target_cond_ml_l: float,
+    target_cu_g_l: float,
+    target_h2o2_ml_l: float,
+    module7_total_volume: float,
+) -> Dict[str, Union[float, str]]:
+    """
+    Calculates the correction for Module 7. Decides between dilution or fortification.
+    """
+    is_cond_high = current_cond_ml_l > target_cond_ml_l
+    is_cu_high = current_cu_g_l > target_cu_g_l
+    is_h2o2_high = current_h2o2_ml_l > target_h2o2_ml_l
+
+    available_space = max(0, module7_total_volume - current_volume)
+
+    # --- Scenario 1: Dilution (if ANY concentration is high) ---
+    if is_cond_high or is_cu_high or is_h2o2_high:
+        water_for_cond = current_volume * (current_cond_ml_l / target_cond_ml_l - 1) if is_cond_high else 0
+        water_for_cu = current_volume * (current_cu_g_l / target_cu_g_l - 1) if is_cu_high else 0
+        water_for_h2o2 = current_volume * (current_h2o2_ml_l / target_h2o2_ml_l - 1) if is_h2o2_high else 0
+        
+        water_to_add = max(water_for_cond, water_for_cu, water_for_h2o2)
+
+        if water_to_add > available_space:
+            return {"status": "ERROR", "message": f"Dilution requires {water_to_add:.2f} L of water, which exceeds available space."}
+
+        final_volume = current_volume + water_to_add
+        final_cond = (current_volume * current_cond_ml_l) / final_volume
+        final_cu = (current_volume * current_cu_g_l) / final_volume
+        final_h2o2 = (current_volume * current_h2o2_ml_l) / final_volume
+        
+        return {
+            "status": "DILUTION", "add_water": water_to_add,
+            "add_cond": 0, "add_cu": 0, "add_h2o2": 0,
+            "final_volume": final_volume, "final_cond": final_cond, "final_cu": final_cu, "final_h2o2": final_h2o2
+        }
+
+    # --- Scenario 2: Fortification (if ALL concentrations are at or below target) ---
+    else:
+        # Calculate how much of each pure chemical is needed to reach the target
+        add_cond_ml = (target_cond_ml_l - current_cond_ml_l) * module7_total_volume
+        add_cu_g = (target_cu_g_l - current_cu_g_l) * module7_total_volume
+        add_h2o2_ml = (target_h2o2_ml_l - current_h2o2_ml_l) * module7_total_volume
+
+        # Volume increase is ONLY from liquid chemicals (Condition and H2O2)
+        volume_increase_L = (add_cond_ml + add_h2o2_ml) / 1000.0
+        
+        if volume_increase_L > available_space:
+            return {"status": "ERROR", "message": f"Fortification requires adding {volume_increase_L:.2f} L of liquid chemicals, which exceeds available space."}
+
+        # For fortification, we assume the user brings the volume up to the total
+        water_to_add = available_space - volume_increase_L
+        final_volume = module7_total_volume
+        
+        return {
+            "status": "FORTIFICATION", "add_water": water_to_add,
+            "add_cond": add_cond_ml, "add_cu": add_cu_g, "add_h2o2": add_h2o2_ml,
+            "final_volume": final_volume, "final_cond": target_cond_ml_l, "final_cu": target_cu_g_l, "final_h2o2": target_h2o2_ml_l
+        }
+
+
+def simulate_module7_addition(
+    current_volume: float,
+    current_cond_ml_l: float,
+    current_cu_g_l: float,
+    current_h2o2_ml_l: float,
+    add_water_L: float,
+    add_cond_ml: float,
+    add_cu_g: float,
+    add_h2o2_ml: float,
+) -> Dict[str, float]:
+    """
+    Simulates the result of adding specific amounts of additives to the Module 7 tank.
+    """
+    # New liquid volume ONLY increases from water and liquid chemicals
+    final_volume = current_volume + add_water_L + (add_cond_ml / 1000.0) + (add_h2o2_ml / 1000.0)
+
+    # Calculate final total amount of each chemical
+    final_amount_cond = (current_volume * current_cond_ml_l) + add_cond_ml
+    final_amount_cu = (current_volume * current_cu_g_l) + (add_cu_g / 1.0) # Convert grams to g/L basis
+    final_amount_h2o2 = (current_volume * current_h2o2_ml_l) + add_h2o2_ml
+    
+    # Calculate new concentrations
+    final_conc_cond = final_amount_cond / final_volume if final_volume > 0 else 0
+    final_conc_cu = final_amount_cu / final_volume if final_volume > 0 else 0
+    final_conc_h2o2 = final_amount_h2o2 / final_volume if final_volume > 0 else 0
+
+    return {
+        "new_volume": final_volume,
+        "new_cond": final_conc_cond,
+        "new_cu": final_conc_cu,
+        "new_h2o2": final_conc_h2o2,
+    }
