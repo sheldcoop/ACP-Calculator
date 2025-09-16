@@ -71,9 +71,9 @@ class TestCalculation(unittest.TestCase):
             current_cond_ml_l=190.0,
             current_cu_g_l=22.0,
             current_h2o2_ml_l=7.5,
-            makeup_cond_ml_l=makeup_cond_ml_l,
-            makeup_cu_g_l=makeup_cu_g_l,
-            makeup_h2o2_ml_l=makeup_h2o2_ml_l,
+            target_cond_ml_l=makeup_cond_ml_l,
+            target_cu_g_l=makeup_cu_g_l,
+            target_h2o2_ml_l=makeup_h2o2_ml_l,
             module7_total_volume=260.0  # Assuming a total volume of 260L
         )
 
@@ -81,7 +81,9 @@ class TestCalculation(unittest.TestCase):
         # The exact value depends on the vector projection calculation.
         # We will check if the water added is greater than 0 and makeup is 0.
         self.assertGreater(result["add_water"], 0)
-        self.assertAlmostEqual(result["add_makeup"], 0.0, places=2)
+        self.assertAlmostEqual(result["add_cond"], 0.0, places=2)
+        self.assertAlmostEqual(result["add_cu"], 0.0, places=2)
+        self.assertAlmostEqual(result["add_h2o2"], 0.0, places=2)
 
 if __name__ == '__main__':
     unittest.main()
