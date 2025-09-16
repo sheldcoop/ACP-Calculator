@@ -151,6 +151,39 @@ class TestDynamicApp(unittest.TestCase):
         self.assertAlmostEqual(results['new_A'], 133.85, places=2)
         self.assertAlmostEqual(results['new_B'], 53.85, places=2)
 
+    def test_independent_gauge_config(self):
+        """
+        Tests the specific bug report where gauge settings from one chemical
+        were bleeding into another.
+        """
+        config = [
+            {
+                "name": "Test Module",
+                "module_type": "2-Component Corrector",
+                "total_volume": 240.0,
+                "chemicals": [
+                    {
+                        "name": "Acid", "unit": "ml/L", "target": 120.0, "internal_id": "A",
+                        "green_zone_min": 80.0, "green_zone_max": 100.0, "tick_interval": 10.0
+                    },
+                    {
+                        "name": "Brightener", "unit": "ml/L", "target": 50.0, "internal_id": "B",
+                        "green_zone_min": 18.0, "green_zone_max": 20.0, "tick_interval": 2.0
+                    }
+                ]
+            }
+        ]
+
+        # Save and reload the config to simulate the user's workflow
+        save_config(config)
+        loaded_config = load_config()
+
+        # Verify the second chemical's data is correct and independent
+        second_chemical = loaded_config[0]['chemicals'][1]
+        self.assertEqual(second_chemical['green_zone_min'], 18.0)
+        self.assertEqual(second_chemical['green_zone_max'], 20.0)
+        self.assertEqual(second_chemical['tick_interval'], 2.0)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -219,23 +219,31 @@ def render_config_editor(config_in_progress: List[Dict[str, Any]]):
             if len(module.get('chemicals', [])) != len(required_chemicals):
                 module['chemicals'] = [{'internal_id': chem_id} for chem_id in required_chemicals]
 
+            # Create a new list for the chemical data to avoid in-place modification issues
+            new_chemicals_data = []
             for j, chemical_id in enumerate(required_chemicals):
                 chem = module['chemicals'][j]
                 st.markdown(f"**Chemical {j+1} (Internal ID: `{chemical_id}`)**")
 
-                chem['internal_id'] = chemical_id
-                chem['name'] = st.text_input("Display Name", value=chem.get('name', f"Chemical {chemical_id}"), key=f"chem_name_{i}_{j}")
-                chem['unit'] = st.text_input("Unit (e.g., g/L)", value=chem.get('unit', 'ml/L'), key=f"chem_unit_{i}_{j}")
-                chem['target'] = st.number_input("Target Concentration", min_value=0.0, value=chem.get('target', 100.0), format="%.2f", key=f"chem_target_{i}_{j}")
+                new_chem_data = {'internal_id': chemical_id}
+
+                new_chem_data['name'] = st.text_input("Display Name", value=chem.get('name', f"Chemical {chemical_id}"), key=f"chem_name_{i}_{j}")
+                new_chem_data['unit'] = st.text_input("Unit (e.g., g/L)", value=chem.get('unit', 'ml/L'), key=f"chem_unit_{i}_{j}")
+                new_chem_data['target'] = st.number_input("Target Concentration", min_value=0.0, value=chem.get('target', 100.0), format="%.2f", key=f"chem_target_{i}_{j}")
 
                 with st.expander("Advanced Gauge Options"):
                     col1, col2, col3 = st.columns(3)
                     with col1:
-                        chem['green_zone_min'] = st.number_input("Optimal Range Min", value=chem.get('green_zone_min', chem['target'] * 0.9), key=f"chem_gz_min_{i}_{j}")
+                        new_chem_data['green_zone_min'] = st.number_input("Optimal Range Min", value=chem.get('green_zone_min', new_chem_data['target'] * 0.9), key=f"chem_gz_min_{i}_{j}")
                     with col2:
-                        chem['green_zone_max'] = st.number_input("Optimal Range Max", value=chem.get('green_zone_max', chem['target'] * 1.1), key=f"chem_gz_max_{i}_{j}")
+                        new_chem_data['green_zone_max'] = st.number_input("Optimal Range Max", value=chem.get('green_zone_max', new_chem_data['target'] * 1.1), key=f"chem_gz_max_{i}_{j}")
                     with col3:
-                        chem['tick_interval'] = st.number_input("Tick Interval", min_value=0.0, value=chem.get('tick_interval', chem['target'] / 5.0), key=f"chem_tick_{i}_{j}")
+                        new_chem_data['tick_interval'] = st.number_input("Tick Interval", min_value=0.0, value=chem.get('tick_interval', new_chem_data['target'] / 5.0), key=f"chem_tick_{i}_{j}")
+
+                new_chemicals_data.append(new_chem_data)
+
+            # Overwrite the old list with the new one after all inputs have been rendered
+            module['chemicals'] = new_chemicals_data
 
     if st.button("➕ Add Another Module"):
         config_in_progress.append({

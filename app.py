@@ -8,6 +8,7 @@
 
 import streamlit as st
 import os
+import copy
 
 # Import configuration and UI modules
 from config.manager import load_config
@@ -91,7 +92,7 @@ def run_main_app(app_config: list):
 
         # Make a deep copy of the config for editing to allow for cancellation
         if 'config_editor_state' not in st.session_state:
-            st.session_state.config_editor_state = [dict(m) for m in app_config]
+            st.session_state.config_editor_state = copy.deepcopy(app_config)
 
         config_to_edit = st.session_state.config_editor_state
         render_config_editor(config_to_edit)
