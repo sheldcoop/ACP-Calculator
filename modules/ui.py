@@ -177,25 +177,38 @@ def display_module7_correction(result: Dict[str, Any], initial_values: Dict[str,
 
 
 # --- Tab 5: Module 7 Sandbox ---
+# modules/ui.py
+
 def render_module7_sandbox_ui() -> Dict[str, Any]:
+    """Renders the UI components for the Module 7 Sandbox simulator."""
     st.header("1. Set Your Starting Point")
     col1, col2, col3, col4 = st.columns(4)
     start_volume = col1.number_input("Current Volume (L)", 0.0, MODULE7_TOTAL_VOLUME, 180.0, 10.0, key="m7_sb_vol")
-    start_cond = col2.number_input("Start 'Conditioner' (ml/L)", 0.0, value=175.0, step=1.0, key="m7_sb_cond")
-    start_cu = col3.number_input("Start 'Cu Etch' (g/L)", 0.0, value=22.0, step=0.1, format="%.1f", key="m7_sb_cu")
-    start_h2o2 = col4.number_input("Start 'H2O2' (ml/L)", 0.0, value=6.0, step=0.1, format="%.1f", key="m7_sb_h2o2")
+    start_cond = col2.number_input("Start 'Conditioner' (ml/L)", 0.0, value=175.0, step=1.0, key="m7_sb_cond") # This key is OK
+    start_cu = col3.number_input("Start 'Cu Etch' (g/L)", 0.0, value=22.0, step=0.1, format="%.1f", key="m7_sb_cu") # This key is OK
+    start_h2o2 = col4.number_input("Start 'H2O2' (ml/L)", 0.0, value=6.0, step=0.1, format="%.1f", key="m7_sb_h2o2") # This key is OK
+    
     available_space = MODULE7_TOTAL_VOLUME - start_volume
     st.info(f"The sandbox tank has **{available_space:.2f} L** of available space for LIQUID additions.")
+    
     st.header("2. Interactive Controls (Add Pure Components)")
     col1, col2, col3, col4 = st.columns(4)
-    add_water_L = col1.slider("Water to Add (L)", 0.0, available_space if available_space > 0 else 1.0, 0.0, 0.5, key="m7_sb_water")
-    add_cond_ml = col2.slider("'Conditioner' to Add (ml)", 0, 5000, 0, 100, key="m7_sb_cond")
-    add_cu_g = col3.slider("'Cu Etch' to Add (grams)", 0, 5000, 0, 100, key="m7_sb_cu")
-    add_h2o2_ml = col4.slider("'H2O2' to Add (ml)", 0, 1000, 0, 50, key="m7_sb_h2o2")
+    
+    # --- THIS BLOCK CONTAINS THE FIX ---
+    add_water_L = col1.slider("Water to Add (L)", 0.0, available_space if available_space > 0 else 1.0, 0.0, 0.5, key="m7_sb_slider_water")
+    add_cond_ml = col2.slider("'Conditioner' to Add (ml)", 0, 5000, 0, 100, key="m7_sb_slider_cond") # <-- CHANGED
+    add_cu_g = col3.slider("'Cu Etch' to Add (grams)", 0, 5000, 0, 100, key="m7_sb_slider_cu")     # <-- CHANGED
+    add_h2o2_ml = col4.slider("'H2O2' to Add (ml)", 0, 1000, 0, 50, key="m7_sb_slider_h2o2")   # <-- CHANGED
+    # --- END OF FIX ---
+
     liquid_added = add_water_L + (add_cond_ml / 1000.0) + (add_h2o2_ml / 1000.0)
     if liquid_added > available_space: st.error(f"⚠️ Warning: Total LIQUID additions ({liquid_added:.2f} L) exceed available space!")
     else: st.success("✅ Total liquid additions are within tank capacity.")
-    return {"start_volume": start_volume, "start_cond": start_cond, "start_cu": start_cu, "start_h2o2": start_h2o2, "add_water_L": add_water_L, "add_cond_ml": add_cond_ml, "add_cu_g": add_cu_g, "add_h2o2_ml": add_h2o2_ml}
+    
+    return {
+        "start_volume": start_volume, "start_cond": start_cond, "start_cu": start_cu, "start_h2o2": start_h2o2,
+        "add_water_L": add_water_L, "add_cond_ml": add_cond_ml, "add_cu_g": add_cu_g, "add_h2o2_ml": add_h2o2_ml
+    }
 
 def display_module7_simulation(results: Dict[str, float], initial_values: Dict[str, float]):
     with st.expander("Live Results Dashboard", expanded=True):
