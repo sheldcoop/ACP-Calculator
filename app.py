@@ -59,19 +59,30 @@ def run_main_app(app_config: list):
     # --- Sidebar for Module Selection ---
     with st.sidebar:
         st.header("Select a Module")
-        module_names = [module["name"] for module in app_config]
 
-        # Update selected module in state when selectbox changes
-        def on_module_change():
-            app_state["selected_module_name"] = st.session_state.module_selector
+        # --- Callback to change the selected module ---
+        def select_module(module_name):
+            app_state["selected_module_name"] = module_name
+            # Clear results from other modules when switching
+            if 'module_results' in app_state:
+                app_state['module_results'] = {}
+            if 'initial_inputs' in app_state:
+                del app_state['initial_inputs']
 
-        st.selectbox(
-            "Modules",
-            options=module_names,
-            key="module_selector",
-            on_change=on_module_change,
-            disabled=st.session_state.get("edit_mode", False) # Disable when editing
-        )
+        is_editing = st.session_state.get("edit_mode", False)
+
+        for module in app_config:
+            module_name = module["name"]
+            # Use a different button type to show which module is selected
+            button_type = "primary" if app_state["selected_module_name"] == module_name and not is_editing else "secondary"
+            st.button(
+                module_name,
+                key=f"select_mod_{module_name}",
+                on_click=select_module,
+                args=(module_name,),
+                disabled=is_editing,
+                use_container_width=True
+            )
 
         st.markdown("---")
         st.toggle("⚙️ Edit Configuration", key="edit_mode")
@@ -98,21 +109,27 @@ def run_main_app(app_config: list):
         render_config_editor(config_to_edit)
 
         st.markdown("---")
+
+        # --- Callbacks for State Management ---
+        def on_save_changes():
+            save_config(st.session_state.config_editor_state)
+            st.session_state.edit_mode = False
+            # Clean up editor state
+            if 'config_editor_state' in st.session_state:
+                del st.session_state.config_editor_state
+            st.success("Configuration saved!")
+
+        def on_cancel():
+            st.session_state.edit_mode = False
+            # Clean up editor state
+            if 'config_editor_state' in st.session_state:
+                del st.session_state.config_editor_state
+
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("💾 Save Changes", type="primary"):
-                save_config(config_to_edit)
-                st.session_state.edit_mode = False
-                # Clean up editor state and rerun to reflect changes
-                del st.session_state.config_editor_state
-                st.success("Configuration saved!")
-                st.rerun()
+            st.button("💾 Save Changes", type="primary", on_click=on_save_changes)
         with col2:
-            if st.button("❌ Cancel"):
-                st.session_state.edit_mode = False
-                # Clean up editor state
-                del st.session_state.config_editor_state
-                st.rerun()
+            st.button("❌ Cancel", on_click=on_cancel)
 
     else:
         st.header(f"Module: {selected_module_config['name']}")
