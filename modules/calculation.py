@@ -357,3 +357,67 @@ def dispatch_calculation(module_config: Dict[str, any], inputs: Dict[str, float]
 
     else:
         return {"status": "ERROR", "message": f"Unknown module type: {module_type}"}
+
+
+def dispatch_simulation(module_config: Dict[str, any], inputs: Dict[str, float]) -> Dict[str, float]:
+    """
+    Acts as a bridge between the dynamic sandbox UI and the static simulation functions.
+    """
+    module_type = module_config.get("module_type")
+
+    # Prepare arguments from the inputs dict
+    kwargs = {
+        "current_volume": inputs.get("current_volume"),
+        "water_to_add": inputs.get("water_to_add"),
+        "makeup_to_add": inputs.get("makeup_to_add"),
+    }
+
+    # Map the dynamic chemical names to the internal function arguments
+    for chemical in module_config.get("chemicals", []):
+        internal_id = chemical.get("internal_id")
+        # e.g., current_conc_a_ml_l = inputs["current_A"]
+        kwargs[f"current_conc_{internal_id}_ml_l"] = inputs.get(f"current_{internal_id}")
+        kwargs[f"makeup_conc_{internal_id}_ml_l"] = inputs.get(f"makeup_{internal_id}")
+
+    # Dispatch to the correct simulation engine
+    if module_type == "2-Component Corrector":
+        sim_args = {
+            "current_volume": kwargs['current_volume'],
+            "current_conc_a_ml_l": kwargs.get('current_conc_A_ml_l'),
+            "current_conc_b_ml_l": kwargs.get('current_conc_B_ml_l'),
+            "makeup_conc_a_ml_l": kwargs.get('makeup_conc_A_ml_l'),
+            "makeup_conc_b_ml_l": kwargs.get('makeup_conc_B_ml_l'),
+            "water_to_add": kwargs['water_to_add'],
+            "makeup_to_add": kwargs['makeup_to_add'],
+        }
+        result = simulate_addition(**sim_args)
+        # Remap results back to generic keys
+        return {
+            "new_volume": result.get("new_volume"),
+            "new_A": result.get("new_conc_a"),
+            "new_B": result.get("new_conc_b"),
+        }
+
+    elif module_type == "3-Component Corrector":
+        sim_args = {
+            "current_volume": kwargs['current_volume'],
+            "current_cond_ml_l": kwargs.get('current_conc_cond_ml_l'),
+            "current_cu_g_l": inputs.get("current_cu"), # Handle g/L unit
+            "current_h2o2_ml_l": kwargs.get('current_conc_h2o2_ml_l'),
+            "makeup_cond_ml_l": kwargs.get('makeup_conc_cond_ml_l'),
+            "makeup_cu_g_l": inputs.get("makeup_cu"), # Handle g/L unit
+            "makeup_h2o2_ml_l": kwargs.get('makeup_conc_h2o2_ml_l'),
+            "water_to_add": kwargs['water_to_add'],
+            "makeup_to_add": kwargs['makeup_to_add'],
+        }
+        result = simulate_module7_addition_with_makeup(**sim_args)
+        # Remap results
+        return {
+            "new_volume": result.get("new_volume"),
+            "new_cond": result.get("new_cond"),
+            "new_cu": result.get("new_cu"),
+            "new_h2o2": result.get("new_h2o2"),
+        }
+
+    else:
+        return {}

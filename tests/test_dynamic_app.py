@@ -92,5 +92,38 @@ class TestDynamicApp(unittest.TestCase):
         self.assertGreater(result['add_water'], 0)
         self.assertEqual(result['add_makeup'], 0)
 
+    def test_edit_and_save_config(self):
+        """Test that editing a configuration and saving it works."""
+        # Load the initial config
+        config = load_config()
+        # "Edit" a value
+        config[0]['chemicals'][0]['target'] = 999.0
+        # "Save" the changes
+        save_config(config)
+        # Load it again to check
+        new_config = load_config()
+        self.assertEqual(new_config[0]['chemicals'][0]['target'], 999.0)
+
+    def test_simulation_dispatcher(self):
+        """Test the simulation dispatcher for a 2-component module."""
+        from modules.calculation import dispatch_simulation
+        module_config = self.test_config[0]
+        sim_inputs = {
+            "current_volume": 100.0,
+            "current_A": 150.0,
+            "current_B": 60.0,
+            "makeup_A": 120.0,
+            "makeup_B": 50.0,
+            "water_to_add": 10.0,
+            "makeup_to_add": 20.0
+        }
+
+        results = dispatch_simulation(module_config, sim_inputs)
+
+        self.assertAlmostEqual(results['new_volume'], 130.0)
+        self.assertAlmostEqual(results['new_A'], 133.85, places=2)
+        self.assertAlmostEqual(results['new_B'], 53.85, places=2)
+
+
 if __name__ == '__main__':
     unittest.main()

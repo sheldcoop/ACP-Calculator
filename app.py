@@ -17,8 +17,8 @@ from modules.ui import (
     display_dynamic_correction,
     display_dynamic_sandbox,
 )
-from modules.calculation import dispatch_calculation
-from modules.ui import render_dynamic_module_ui, display_dynamic_correction
+from modules.calculation import dispatch_calculation, dispatch_simulation
+from modules.ui import render_dynamic_module_ui, display_dynamic_correction, render_dynamic_sandbox_ui
 
 def main():
     """
@@ -67,8 +67,12 @@ def run_main_app(app_config: list):
             "Modules",
             options=module_names,
             key="module_selector",
-            on_change=on_module_change
+            on_change=on_module_change,
+            disabled=st.session_state.get("edit_mode", False) # Disable when editing
         )
+
+        st.markdown("---")
+        st.toggle("⚙️ Edit Configuration", key="edit_mode")
 
     # Get the full configuration for the selected module
     selected_module_config = next(
@@ -81,36 +85,89 @@ def run_main_app(app_config: list):
         return
 
     # --- Main Content Area ---
-    st.header(f"Module: {selected_module_config['name']}")
-    st.markdown(f"**Calculation Type:** `{selected_module_config['module_type']}`")
-    st.markdown("---")
+    if st.session_state.get("edit_mode", False):
+        st.header("Configuration Editor")
 
-    # For now, we only have "Corrector" UIs. We can add a simple router here for sandboxes later.
-    # This is where we would check module_type and call different render functions.
+        # Make a deep copy of the config for editing to allow for cancellation
+        if 'config_editor_state' not in st.session_state:
+            st.session_state.config_editor_state = [dict(m) for m in app_config]
 
-    # Render the dynamic UI for the selected module
-    submitted, inputs = render_dynamic_module_ui(selected_module_config)
+        config_to_edit = st.session_state.config_editor_state
+        render_config_editor(config_to_edit)
 
-    # --- Calculation and Display Logic ---
-    if submitted:
-        # Store the initial inputs for comparison in the gauges
-        app_state['initial_inputs'] = inputs.copy()
-
-        # Dispatch the calculation
-        results = dispatch_calculation(selected_module_config, inputs)
-
-        # Store results in the session state
-        app_state['module_results'][selected_module_config['name']] = results
-
-        # Rerun to ensure the results are displayed immediately below the form
-        st.rerun()
-
-    # Display the results if they exist for the current module
-    if selected_module_config['name'] in app_state['module_results']:
-        results = app_state['module_results'][selected_module_config['name']]
-        initial_inputs = app_state.get('initial_inputs', {})
         st.markdown("---")
-        display_dynamic_correction(results, selected_module_config, initial_inputs)
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("💾 Save Changes", type="primary"):
+                save_config(config_to_edit)
+                st.session_state.edit_mode = False
+                # Clean up editor state and rerun to reflect changes
+                del st.session_state.config_editor_state
+                st.success("Configuration saved!")
+                st.rerun()
+        with col2:
+            if st.button("❌ Cancel"):
+                st.session_state.edit_mode = False
+                # Clean up editor state
+                del st.session_state.config_editor_state
+                st.rerun()
+
+    else:
+        st.header(f"Module: {selected_module_config['name']}")
+        st.markdown(f"**Calculation Type:** `{selected_module_config['module_type']}`")
+
+        corrector_tab, sandbox_tab = st.tabs(["Corrector", "Sandbox"])
+
+        with corrector_tab:
+            st.markdown("---")
+            # Render the dynamic UI for the selected module
+            submitted, inputs = render_dynamic_module_ui(selected_module_config)
+
+            # --- Calculation and Display Logic ---
+            if submitted:
+                app_state['initial_inputs'] = inputs.copy()
+                results = dispatch_calculation(selected_module_config, inputs)
+                app_state['module_results'][selected_module_config['name']] = results
+                st.rerun()
+
+            # Display the results if they exist for the current module
+            if selected_module_config['name'] in app_state['module_results']:
+                results = app_state['module_results'][selected_module_config['name']]
+                initial_inputs = app_state.get('initial_inputs', {})
+                st.markdown("---")
+                display_dynamic_correction(results, selected_module_config, initial_inputs)
+
+        with sandbox_tab:
+            st.markdown("---")
+            # This UI is live, so it doesn't need a submit button
+            sim_inputs = render_dynamic_sandbox_ui(selected_module_config)
+
+            # --- Simulation and Display ---
+            if sim_inputs:
+                sim_results = dispatch_simulation(selected_module_config, sim_inputs)
+
+                st.markdown("---")
+                st.header("Live Simulation Results")
+
+                # We need a new display function for simulation results
+                # For now, let's just display the raw results
+                # st.write(sim_results)
+
+                # A more visual approach using gauges:
+                st.metric("New Tank Volume", f"{sim_results.get('new_volume', 0):.2f} L")
+
+                cols = st.columns(len(selected_module_config['chemicals']))
+                for i, chemical in enumerate(selected_module_config['chemicals']):
+                    with cols[i]:
+                        internal_id = chemical['internal_id']
+                        display_gauge(
+                            label=chemical['name'],
+                            value=sim_results.get(f"new_{internal_id}", 0),
+                            target=chemical['target'],
+                            unit=chemical['unit'],
+                            key=f"sim_gauge_{selected_module_config['name']}_{internal_id}",
+                            start_value=sim_inputs.get(f"current_{internal_id}")
+                        )
 
 
 if __name__ == "__main__":

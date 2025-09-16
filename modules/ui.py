@@ -162,6 +162,109 @@ def display_dynamic_correction(result: Dict[str, Any], module_config: Dict[str, 
                     green_zone=[chemical['target'] * 0.9, chemical['target'] * 1.1]
                 )
 
-# Placeholder for a dynamic sandbox display function if needed in the future
-def display_dynamic_sandbox():
-    st.info("Sandbox functionality is not yet implemented in the dynamic UI.")
+def render_config_editor(config_in_progress: List[Dict[str, Any]]):
+    """
+    Renders a UI for creating and editing a list of module configurations.
+    This function is reusable for both initial setup and later editing.
+
+    Args:
+        config_in_progress: A list of module dictionaries to be displayed and edited.
+    """
+    from config.manager import get_module_types # Local import to avoid circular dependency
+    module_types = get_module_types()
+
+    for i, module in enumerate(config_in_progress):
+        st.markdown("---")
+        st.header(f"Module {i + 1}: {module.get('name', 'New Module')}")
+
+        with st.expander("Module Settings", expanded=True):
+            module['name'] = st.text_input("Module Name", value=module.get('name', ''), key=f"mod_name_{i}")
+            module['module_type'] = st.selectbox(
+                "Select Calculation Type",
+                options=list(module_types.keys()),
+                index=list(module_types.keys()).index(module.get('module_type', list(module_types.keys())[0])),
+                key=f"mod_type_{i}"
+            )
+            module['total_volume'] = st.number_input("Total Module Volume (L)", min_value=0.1, value=module.get('total_volume', 250.0), key=f"mod_vol_{i}")
+
+            st.subheader("Chemicals in this Module")
+
+            required_chemicals = module_types[module['module_type']]
+
+            if len(module.get('chemicals', [])) != len(required_chemicals):
+                module['chemicals'] = [{'internal_id': chem_id} for chem_id in required_chemicals]
+
+            for j, chemical_id in enumerate(required_chemicals):
+                chem = module['chemicals'][j]
+                st.markdown(f"**Chemical {j+1} (Internal ID: `{chemical_id}`)**")
+
+                chem['internal_id'] = chemical_id
+                chem['name'] = st.text_input("Display Name", value=chem.get('name', f"Chemical {chemical_id}"), key=f"chem_name_{i}_{j}")
+                chem['unit'] = st.text_input("Unit (e.g., g/L)", value=chem.get('unit', 'ml/L'), key=f"chem_unit_{i}_{j}")
+                chem['target'] = st.number_input("Target Concentration", min_value=0.0, value=chem.get('target', 100.0), format="%.2f", key=f"chem_target_{i}_{j}")
+
+    if st.button("➕ Add Another Module"):
+        config_in_progress.append({
+            "name": f"Module {len(config_in_progress) + 1}",
+            "module_type": list(module_types.keys())[0],
+            "total_volume": 250.0,
+            "chemicals": []
+        })
+        st.rerun()
+
+def render_dynamic_sandbox_ui(module_config: Dict[str, Any]):
+    """
+    Dynamically renders the sandbox UI for a given module.
+    """
+    st.header("Simulation Starting Point")
+
+    # Use a unique key for the sandbox inputs to avoid conflicts
+    if 'sandbox_inputs' not in st.session_state:
+        st.session_state.sandbox_inputs = {}
+
+    sim_inputs = st.session_state.sandbox_inputs
+
+    cols = st.columns(len(module_config['chemicals']) + 1)
+    with cols[0]:
+        sim_inputs['current_volume'] = st.number_input(
+            "Current Volume (L)",
+            min_value=0.0,
+            max_value=float(module_config['total_volume']),
+            value=100.0,
+            step=10.0,
+            key=f"sim_input_vol_{module_config['name']}"
+        )
+
+    for i, chemical in enumerate(module_config['chemicals']):
+        with cols[i+1]:
+            sim_inputs[f"current_{chemical['internal_id']}"] = st.number_input(
+                f"Start '{chemical['name']}' ({chemical['unit']})",
+                min_value=0.0,
+                value=chemical['target'] * 1.15, # Start with a high value
+                step=1.0,
+                format="%.1f",
+                key=f"sim_input_chem_{module_config['name']}_{chemical['internal_id']}"
+            )
+
+    st.header("Interactive Controls")
+    available_space = module_config['total_volume'] - sim_inputs['current_volume']
+    st.info(f"The tank has **{available_space:.2f} L** of available space.")
+
+    max_add = available_space if available_space > 0 else 1.0
+    col1, col2 = st.columns(2)
+    with col1:
+        sim_inputs['water_to_add'] = st.slider("Water to Add (L)", 0.0, max_add, 0.0, 0.5, key=f"sim_slider_water_{module_config['name']}")
+    with col2:
+        sim_inputs['makeup_to_add'] = st.slider("Makeup Solution to Add (L)", 0.0, max_add, 0.0, 0.5, key=f"sim_slider_makeup_{module_config['name']}")
+
+    total_added = sim_inputs['water_to_add'] + sim_inputs['makeup_to_add']
+    if total_added > available_space:
+        st.error(f"⚠️ Warning: Total additions ({total_added:.2f} L) exceed available space ({available_space:.2f} L)!")
+    else:
+        st.success("✅ Total additions are within tank capacity.")
+
+    # Also need to pass makeup concentrations, assuming they are at target
+    for chemical in module_config['chemicals']:
+        sim_inputs[f"makeup_{chemical['internal_id']}"] = chemical['target']
+
+    return sim_inputs
