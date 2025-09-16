@@ -74,12 +74,19 @@ def display_gauge(
     if tick_interval:
         axis_config['dtick'] = tick_interval
 
+    # --- Color Logic for the Number ---
+    number_color = "darkblue" # Default color
+    if green_zone:
+        if green_zone[0] <= value <= green_zone[1]:
+            number_color = colors['green']
+        else:
+            number_color = colors['red']
+
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=value,
-        # --- Update the title to include the delta_text ---
         title={'text': f"<b>{label}</b><br><span style='font-size:0.8em;color:gray'>{unit}</span>{delta_text}", 'align': 'center'},
-        number={'valueformat': '.2f', 'suffix': f" / {target:.2f}"},
+        number={'valueformat': '.2f', 'suffix': f" / {target:.2f}", 'font': {'color': number_color}},
         gauge={
             'axis': axis_config,
             'bar': {'color': "rgba(0,0,0,0.1)"},
@@ -352,11 +359,13 @@ def display_module7_correction(result: Dict[str, Any], initial_values: Dict[str,
 def render_module7_sandbox_ui() -> Dict[str, Any]:
     """Renders the UI components for the Module 7 Sandbox simulator."""
     with st.expander("Simulation Starting Point", expanded=True):
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2 = st.columns(2)
         start_volume = col1.number_input("Current Volume (L)", min_value=0.0, max_value=MODULE7_TOTAL_VOLUME, value=180.0, step=10.0, key="m7_sand_input_vol")
         start_cond = col2.number_input("Start 'Conditioner' (ml/L)", min_value=0.0, value=175.0, step=1.0, key="m7_sand_input_cond")
-        start_cu = col3.number_input("Start 'Cu Etch' (g/L)", min_value=0.0, value=22.0, step=0.1, format="%.1f", key="m7_sand_input_cu")
-        start_h2o2 = col4.number_input("Start 'H2O2' (ml/L)", min_value=0.0, value=6.0, step=0.1, format="%.1f", key="m7_sand_input_h2o2")
+
+        col1, col2 = st.columns(2)
+        start_cu = col1.number_input("Start 'Cu Etch' (g/L)", min_value=0.0, value=22.0, step=0.1, format="%.1f", key="m7_sand_input_cu")
+        start_h2o2 = col2.number_input("Start 'H2O2' (ml/L)", min_value=0.0, value=6.0, step=0.1, format="%.1f", key="m7_sand_input_h2o2")
 
     with st.expander("Simulation Targets (Gauges)"):
         col1, col2, col3 = st.columns(3)
