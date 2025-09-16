@@ -113,9 +113,9 @@ def main():
             }
             auto_args = {
                 "current_volume": auto_inputs['current_volume'],
-                "measured_cond_ml_l": initial_values_m7['cond'],
-                "measured_cu_g_l": initial_values_m7['cu'],
-                "measured_h2o2_ml_l": initial_values_m7['h2o2'],
+                "current_cond_ml_l": initial_values_m7['cond'],
+                "current_cu_g_l": initial_values_m7['cu'],
+                "current_h2o2_ml_l": initial_values_m7['h2o2'],
                 "makeup_cond_ml_l": MODULE7_TARGET_CONDITION_ML_L,
                 "makeup_cu_g_l": MODULE7_TARGET_CU_ETCH_G_L,
                 "makeup_h2o2_ml_l": MODULE7_TARGET_H2O2_ML_L,
