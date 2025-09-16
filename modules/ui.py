@@ -315,24 +315,27 @@ def render_module7_sandbox_ui() -> Dict[str, Any]:
     start_h2o2 = col4.number_input("Start 'H2O2' (ml/L)", min_value=0.0, value=6.0, step=0.1, format="%.1f", key="m7_sand_input_h2o2")
     
     available_space = MODULE7_TOTAL_VOLUME - start_volume
-    st.info(f"The sandbox tank has **{available_space:.2f} L** of available space for LIQUID additions.")
+    st.info(f"The sandbox tank has **{available_space:.2f} L** of available space.")
     
-    st.header("2. Interactive Controls (Add Pure Components)")
-    col1, col2, col3, col4 = st.columns(4)
-    # These sliders now correctly represent adding PURE chemicals.
-    add_water_L = col1.slider("Water to Add (L)", 0.0, available_space if available_space > 0 else 1.0, 0.0, 0.5, key="m7_sand_slider_water")
-    add_cond_ml = col2.slider("'Conditioner' to Add (ml)", 0, 5000, 0, 100, key="m7_sand_slider_cond")
-    add_cu_g = col3.slider("'Cu Etch' to Add (grams)", 0, 5000, 0, 100, key="m7_sand_slider_cu")
-    add_h2o2_ml = col4.slider("'H2O2' to Add (ml)", 0, 1000, 0, 50, key="m7_sand_slider_h2o2")
+    st.header("2. Interactive Controls")
+    col1, col2 = st.columns(2)
+    max_add = available_space if available_space > 0 else 1.0
+    water_to_add = col1.slider("Water to Add (L)", 0.0, max_add, 0.0, 0.5, key="m7_sand_slider_water")
+    makeup_to_add = col2.slider("Makeup Solution to Add (L)", 0.0, max_add, 0.0, 0.5, key="m7_sand_slider_makeup")
     
-    # Correctly calculate total liquid added and check capacity.
-    liquid_added = add_water_L + (add_cond_ml / 1000.0) + (add_h2o2_ml / 1000.0)
-    if liquid_added > available_space: st.error(f"⚠️ Warning: Total LIQUID additions ({liquid_added:.2f} L) exceed available space!")
-    else: st.success("✅ Total liquid additions are within tank capacity.")
-    
+    total_added = water_to_add + makeup_to_add
+    if total_added > available_space:
+        st.error(f"⚠️ Warning: Total additions ({total_added:.2f} L) exceed available space ({available_space:.2f} L)!")
+    else:
+        st.success("✅ Total additions are within tank capacity.")
+
     return {
-        "start_volume": start_volume, "start_cond": start_cond, "start_cu": start_cu, "start_h2o2": start_h2o2,
-        "add_water_L": add_water_L, "add_cond_ml": add_cond_ml, "add_cu_g": add_cu_g, "add_h2o2_ml": add_h2o2_ml
+        "start_volume": start_volume,
+        "start_cond": start_cond,
+        "start_cu": start_cu,
+        "start_h2o2": start_h2o2,
+        "water_to_add": water_to_add,
+        "makeup_to_add": makeup_to_add
     }
 
 def display_module7_simulation(results: Dict[str, float], initial_values: Dict[str, float]):

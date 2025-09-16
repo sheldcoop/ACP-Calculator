@@ -32,7 +32,7 @@ from modules.calculation import (
     calculate_module3_correction,
     simulate_addition,
     calculate_module7_correction,
-    simulate_module7_addition,
+    simulate_module7_addition_with_makeup,
 )
 
 def main():
@@ -130,18 +130,19 @@ def main():
         }
         
         # This dictionary's keys now EXACTLY match the arguments of the
-        # simulate_module7_addition function in calculation.py
+        # simulate_module7_addition_with_makeup function in calculation.py
         sim_args = {
             "current_volume": sandbox_inputs['start_volume'],
             "current_cond_ml_l": initial_values_m7_sb['cond'],
             "current_cu_g_l": initial_values_m7_sb['cu'],
             "current_h2o2_ml_l": initial_values_m7_sb['h2o2'],
-            "add_water_L": sandbox_inputs['add_water_L'],
-            "add_cond_ml": sandbox_inputs['add_cond_ml'],
-            "add_cu_g": sandbox_inputs['add_cu_g'],
-            "add_h2o2_ml": sandbox_inputs['add_h2o2_ml'],
+            "makeup_cond_ml_l": MODULE7_TARGET_CONDITION_ML_L,
+            "makeup_cu_g_l": MODULE7_TARGET_CU_ETCH_G_L,
+            "makeup_h2o2_ml_l": MODULE7_TARGET_H2O2_ML_L,
+            "water_to_add": sandbox_inputs['water_to_add'],
+            "makeup_to_add": sandbox_inputs['makeup_to_add'],
         }
-        sim_results = simulate_module7_addition(**sim_args)
+        sim_results = simulate_module7_addition_with_makeup(**sim_args)
         st.markdown("---")
         display_module7_simulation(sim_results, initial_values_m7_sb)
 

@@ -160,3 +160,26 @@ def simulate_module7_addition(
         "new_cu": final_amount_cu / final_volume,
         "new_h2o2": final_amount_h2o2 / final_volume,
     }
+
+
+# --- SIMULATOR: Module 7 Sandbox (with Makeup Solution) ---
+def simulate_module7_addition_with_makeup(
+    current_volume: float, current_cond_ml_l: float, current_cu_g_l: float,
+    current_h2o2_ml_l: float, makeup_cond_ml_l: float, makeup_cu_g_l: float,
+    makeup_h2o2_ml_l: float, water_to_add: float, makeup_to_add: float
+) -> Dict[str, float]:
+    """Simulates the result of adding water and makeup solution to the Module 7 tank."""
+    final_volume = current_volume + water_to_add + makeup_to_add
+    if final_volume < EPSILON:
+        return {"new_volume": 0, "new_cond": 0, "new_cu": 0, "new_h2o2": 0}
+
+    final_amount_cond = (current_volume * current_cond_ml_l) + (makeup_to_add * makeup_cond_ml_l)
+    final_amount_cu = (current_volume * current_cu_g_l) + (makeup_to_add * makeup_cu_g_l)
+    final_amount_h2o2 = (current_volume * current_h2o2_ml_l) + (makeup_to_add * makeup_h2o2_ml_l)
+
+    return {
+        "new_volume": final_volume,
+        "new_cond": final_amount_cond / final_volume,
+        "new_cu": final_amount_cu / final_volume,
+        "new_h2o2": final_amount_h2o2 / final_volume,
+    }
