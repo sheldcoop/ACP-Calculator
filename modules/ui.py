@@ -331,7 +331,7 @@ def display_module7_correction(result: Dict[str, Any], initial_values: Dict[str,
         # NOTE: You can customize these green zones if needed
         is_cond_good = 160 <= final_cond <= 200
         is_cu_good = 18 <= final_cu <= 22
-        is_h2o2_good = 6.0 <= final_h2o2 <= 8.0
+        is_h2o2_good = 5.0 <= final_h2o2 <= 8.0
 
         if is_cond_good and is_cu_good and is_h2o2_good:
             st.success("✅ **Success!** All concentrations are within the optimal range.")
