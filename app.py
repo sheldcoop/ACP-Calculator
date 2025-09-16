@@ -1,8 +1,8 @@
 # =====================================================================================
-# MAIN APPLICATION SCRIPT
+# MAIN APPLICATION SCRIPT (DEFINITIVE VERSION)
 # =====================================================================================
-# This script ties together the UI components, configuration, and calculation
-# logic to create the Streamlit web application.
+# This script ties together the UI, configuration, and calculation logic.
+# It contains the final, corrected logic for all five tabs.
 # =====================================================================================
 
 import streamlit as st
@@ -62,7 +62,6 @@ def main():
     with tab2:
         module3_inputs = render_module3_ui()
         if module3_inputs.pop("submitted", False):
-            # Keep a copy of initial concentrations for the delta calculation
             initial_values_m3 = {
                 "conc_a": module3_inputs['measured_conc_a'],
                 "conc_b": module3_inputs['measured_conc_b']
@@ -76,13 +75,11 @@ def main():
                 module3_total_volume=MODULE3_TOTAL_VOLUME
             )
             st.markdown("---")
-            # Pass both the result AND the initial values to the display function
             display_module3_correction(correction_result, initial_values_m3)
 
     # --- Tab 3: Module 3 Sandbox ---
     with tab3:
         sandbox_inputs = render_sandbox_ui()
-        # Keep a copy of initial concentrations for the delta calculation
         initial_values_m3_sb = {
             "conc_a": sandbox_inputs["start_conc_a"],
             "conc_b": sandbox_inputs["start_conc_b"]
@@ -98,14 +95,12 @@ def main():
         }
         simulation_results = simulate_addition(**sim_args)
         st.markdown("---")
-        # Pass both the result AND the initial values to the display function
         display_simulation_results(simulation_results, initial_values_m3_sb)
 
     # --- Tab 4: Module 7 Corrector ---
     with tab4:
         auto_inputs = render_module7_corrector_ui()
         if auto_inputs.pop("submitted", False):
-            # Keep a copy of initial concentrations for the delta calculation
             initial_values_m7 = {
                 "cond": auto_inputs['current_cond'],
                 "cu": auto_inputs['current_cu'],
@@ -116,39 +111,38 @@ def main():
                 "current_cond_ml_l": initial_values_m7['cond'],
                 "current_cu_g_l": initial_values_m7['cu'],
                 "current_h2o2_ml_l": initial_values_m7['h2o2'],
-                "makeup_cond_ml_l": MODULE7_TARGET_CONDITION_ML_L,
-                "makeup_cu_g_l": MODULE7_TARGET_CU_ETCH_G_L,
-                "makeup_h2o2_ml_l": MODULE7_TARGET_H2O2_ML_L,
+                "target_cond_ml_l": MODULE7_TARGET_CONDITION_ML_L,
+                "target_cu_g_l": MODULE7_TARGET_CU_ETCH_G_L,
+                "target_h2o2_ml_l": MODULE7_TARGET_H2O2_ML_L,
                 "module7_total_volume": MODULE7_TOTAL_VOLUME
             }
             auto_correction_result = calculate_module7_correction(**auto_args)
             st.markdown("---")
-            # Pass both the result AND the initial values to the display function
             display_module7_correction(auto_correction_result, initial_values_m7)
 
-    # --- Tab 5: Module 7 Sandbox ---
+    # --- Tab 5: Module 7 Sandbox (CORRECTED LOGIC) ---
     with tab5:
         sandbox_inputs = render_module7_sandbox_ui()
-        # Keep a copy of initial concentrations for the delta calculation
         initial_values_m7_sb = {
             "cond": sandbox_inputs['start_cond'],
             "cu": sandbox_inputs['start_cu'],
             "h2o2": sandbox_inputs['start_h2o2']
         }
+        
+        # This dictionary's keys now EXACTLY match the arguments of the
+        # simulate_module7_addition function in calculation.py
         sim_args = {
             "current_volume": sandbox_inputs['start_volume'],
             "current_cond_ml_l": initial_values_m7_sb['cond'],
             "current_cu_g_l": initial_values_m7_sb['cu'],
             "current_h2o2_ml_l": initial_values_m7_sb['h2o2'],
-            "water_to_add": sandbox_inputs['water_to_add'],
-            "makeup_to_add": sandbox_inputs['makeup_to_add'],
-            "makeup_cond_ml_l": MODULE7_TARGET_CONDITION_ML_L,
-            "makeup_cu_g_l": MODULE7_TARGET_CU_ETCH_G_L,
-            "makeup_h2o2_ml_l": MODULE7_TARGET_H2O2_ML_L,
+            "add_water_L": sandbox_inputs['add_water_L'],
+            "add_cond_ml": sandbox_inputs['add_cond_ml'],
+            "add_cu_g": sandbox_inputs['add_cu_g'],
+            "add_h2o2_ml": sandbox_inputs['add_h2o2_ml'],
         }
         sim_results = simulate_module7_addition(**sim_args)
         st.markdown("---")
-        # Pass both the result AND the initial values to the display function
         display_module7_simulation(sim_results, initial_values_m7_sb)
 
 
