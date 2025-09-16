@@ -198,14 +198,14 @@ def display_gauge(
 
         colors = {"danger": theme.gauge_danger_color, "good": theme.gauge_good_color}
         if green_zone:
-            max_val = target * 2.5
+            max_val = target * 2
             steps = [
                 {'range': [0, green_zone[0]], 'color': colors['danger']},
                 {'range': green_zone, 'color': colors['good']},
                 {'range': [green_zone[1], max_val], 'color': colors['danger']}
             ]
         else:
-            max_val = target * 2.5
+            max_val = target * 2
             steps = [{'range': [0, max_val], 'color': colors['danger']}]
 
         axis_config = {

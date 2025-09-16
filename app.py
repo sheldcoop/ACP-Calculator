@@ -44,18 +44,22 @@ def main():
     st.set_page_config(page_title=APP_TITLE, layout="wide", initial_sidebar_state="expanded")
 
     # --- Theme Management ---
-    if 'current_theme' not in st.session_state:
-        st.session_state.current_theme = "Mission Control"  # Default theme
-
     theme_options = list(THEMES.keys())
+    default_theme = "Mission Control"
+
+    # Initialize or validate the theme in session state.
+    if 'current_theme' not in st.session_state or st.session_state.current_theme not in theme_options:
+        st.session_state.current_theme = default_theme
 
     st.sidebar.title("Display Settings")
     selected_theme_name = st.sidebar.selectbox(
         "Choose a Theme",
         options=theme_options,
-        index=theme_options.index(st.session_state.current_theme),
+        index=theme_options.index(st.session_state.current_theme), # Now this is safe
         key="theme_selector"
     )
+
+    # Update session state and get the current theme object.
     st.session_state.current_theme = selected_theme_name
     current_theme = THEMES[st.session_state.current_theme]
 
