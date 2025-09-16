@@ -410,11 +410,11 @@ def display_module7_simulation(results: Dict[str, float], initial_values: Dict[s
         st.metric("New Tank Volume", f"{results['new_volume']:.2f} L")
         col1, col2, col3 = st.columns(3)
         with col1:
-            display_gauge("Conditioner", final_cond, targets['cond'], "ml/L", "m7_sand_gauge_cond", start_value=initial_values.get("cond"), green_zone=[175, 185])
+            display_gauge("Conditioner", final_cond, targets['cond'], "ml/L", "m7_sand_gauge_cond", start_value=initial_values.get("cond"), green_zone=[160, 180], tick_interval=20)
         with col2:
-            display_gauge("Cu Etch", final_cu, targets['cu'], "g/L", "m7_sand_gauge_cu", start_value=initial_values.get("cu"), green_zone=[19, 21])
+            display_gauge("Cu Etch", final_cu, targets['cu'], "g/L", "m7_sand_gauge_cu", start_value=initial_values.get("cu"), green_zone=[18, 22], tick_interval=2)
         with col3:
-            display_gauge("H2O2", final_h2o2, targets['h2o2'], "ml/L", "m7_sand_gauge_h2o2", start_value=initial_values.get("h2o2"), green_zone=[6.0, 7.0])
+            display_gauge("H2O2", final_h2o2, targets['h2o2'], "ml/L", "m7_sand_gauge_h2o2", start_value=initial_values.get("h2o2"), green_zone=[5, 8], tick_interval=1)
 
 
 
