@@ -9,6 +9,7 @@
 import streamlit as st
 from typing import Dict, Any, Optional, List
 import plotly.graph_objects as go
+import math
 
 # Import the default values and constants from the config file
 from .config import (
@@ -24,10 +25,28 @@ from .config import (
 
 # --- UI Helper Functions ---
 
-def display_gauge(label: str, value: float, target: float, unit: str, key: str, green_zone: Optional[List[float]] = None):
-    """Displays a sleek, modern gauge chart for a given metric."""
-    colors = {"red": "#FF4B4B", "yellow": "#FFC300", "green": "#28A745"}
+def display_gauge(
+    label: str,
+    value: float,
+    target: float,
+    unit: str,
+    key: str,
+    start_value: Optional[float] = None, # <-- Add this new argument
+    green_zone: Optional[List[float]] = None
+):
+    """Displays a sleek, modern gauge chart for a given metric with a delta indicator."""
 
+    # --- Delta Calculation Logic (New!) ---
+    delta_text = ""
+    if start_value is not None and not math.isclose(start_value, value):
+        delta = value - start_value
+        if delta > 0:
+            delta_text = f"<span style='color:green; font-size:0.8em;'> (▲ +{delta:.2f})</span>"
+        else:
+            delta_text = f"<span style='color:red; font-size:0.8em;'> (▼ {delta:.2f})</span>"
+
+    # --- Existing Gauge Logic (Unchanged) ---
+    colors = {"red": "#FF4B4B", "yellow": "#FFC300", "green": "#28A745"}
     if green_zone:
         max_val = target * 2
         steps = [
@@ -53,7 +72,8 @@ def display_gauge(label: str, value: float, target: float, unit: str, key: str, 
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=value,
-        title={'text': f"<b>{label}</b><br><span style='font-size:0.8em;color:gray'>{unit}</span>", 'align': 'center'},
+        # --- Update the title to include the delta_text ---
+        title={'text': f"<b>{label}</b><br><span style='font-size:0.8em;color:gray'>{unit}</span>{delta_text}", 'align': 'center'},
         number={'valueformat': '.2f', 'suffix': f" / {target:.2f}"},
         gauge={
             'axis': {'range': [0, max_val], 'tickwidth': 1, 'tickcolor': "darkblue"},
@@ -113,10 +133,11 @@ def render_module3_ui() -> Dict[str, Any]:
         user_inputs['submitted'] = st.form_submit_button("Calculate Correction")
     return user_inputs
 
-def display_module3_correction(result: Dict[str, Any]):
+def display_module3_correction(result: Dict[str, Any], initial_values: Dict[str, float]):
     """Displays the calculated correction recipe for Module 3."""
     with st.expander("View Correction and Final State", expanded=True):
         st.header("2. Recommended Correction")
+        # ... (keep existing code for status, recipe display) ...
         status = result.get("status")
         if status == "PERFECT":
             st.success(f"✅ {result.get('message')}")
@@ -129,10 +150,33 @@ def display_module3_correction(result: Dict[str, Any]):
         col2.metric("Action: Add Water", f"{add_water:.2f} L")
 
         st.header("3. Final Predicted State")
-        st.metric("New Tank Volume", f"{result.get('final_volume', 0):.2f} L")
+        final_volume = result.get("final_volume", 0)
+        final_conc_a = result.get("final_conc_a", 0)
+        final_conc_b = result.get("final_conc_b", 0)
+
+        # --- High-Level Status Summary (New!) ---
+        is_a_good = 115 <= final_conc_a <= 125
+        is_b_good = 48 <= final_conc_b <= 52
+        if is_a_good and is_b_good:
+            st.success("✅ **Success!** All concentrations are within the optimal range.")
+        else:
+            st.error("❌ **Warning!** At least one concentration is outside the optimal range.")
+
+        st.metric("New Tank Volume", f"{final_volume:.2f} L")
+
         col1, col2 = st.columns(2)
-        with col1: display_gauge("Concentration A", result.get('final_conc_a', 0), DEFAULT_TARGET_A_ML_L, "ml/L", "mod3_corr_gauge_A", green_zone=[115, 125])
-        with col2: display_gauge("Concentration B", result.get('final_conc_b', 0), DEFAULT_TARGET_B_ML_L, "ml/L", "mod3_corr_gauge_B", green_zone=[48, 52])
+        with col1:
+            display_gauge(
+                label="Concentration A", value=final_conc_a, target=DEFAULT_TARGET_A_ML_L,
+                unit="ml/L", key="mod3_corr_gauge_A", green_zone=[115, 125],
+                start_value=initial_values.get("conc_a") # <-- Pass start value
+            )
+        with col2:
+            display_gauge(
+                label="Concentration B", value=final_conc_b, target=DEFAULT_TARGET_B_ML_L,
+                unit="ml/L", key="mod3_corr_gauge_B", green_zone=[48, 52],
+                start_value=initial_values.get("conc_b") # <-- Pass start value
+            )
 
 
 # --- Tab 3: Module 3 Sandbox ---
@@ -156,13 +200,35 @@ def render_sandbox_ui() -> Dict[str, Any]:
     else: st.success("✅ Total additions are within tank capacity.")
     return {"start_volume": start_volume, "start_conc_a": start_conc_a, "start_conc_b": start_conc_b, "water_to_add": water_to_add, "makeup_to_add": makeup_to_add}
 
-def display_simulation_results(results: Dict[str, float]):
+def display_simulation_results(results: Dict[str, float], initial_values: Dict[str, float]):
     """Displays the live results of the Module 3 sandbox simulation."""
     with st.expander("Live Results Dashboard", expanded=True):
+        final_conc_a = results['new_conc_a']
+        final_conc_b = results['new_conc_b']
+
+        # --- High-Level Status Summary (New!) ---
+        is_a_good = 115 <= final_conc_a <= 125
+        is_b_good = 48 <= final_conc_b <= 52
+        if is_a_good and is_b_good:
+            st.success("✅ **Success!** All concentrations are within the optimal range.")
+        else:
+            st.warning("⚠️ **Alert!** At least one concentration is outside the optimal range.")
+
         st.metric("New Tank Volume", f"{results['new_volume']:.2f} L")
+
         col1, col2 = st.columns(2)
-        with col1: display_gauge("Concentration A", results['new_conc_a'], DEFAULT_TARGET_A_ML_L, "ml/L", "mod3_sand_gauge_A", green_zone=[115, 125])
-        with col2: display_gauge("Concentration B", results['new_conc_b'], DEFAULT_TARGET_B_ML_L, "ml/L", "mod3_sand_gauge_B", green_zone=[48, 52])
+        with col1:
+            display_gauge(
+                label="Concentration A", value=final_conc_a, target=DEFAULT_TARGET_A_ML_L,
+                unit="ml/L", key="mod3_sand_gauge_A", green_zone=[115, 125],
+                start_value=initial_values.get("conc_a") # <-- Pass start value
+            )
+        with col2:
+            display_gauge(
+                label="Concentration B", value=final_conc_b, target=DEFAULT_TARGET_B_ML_L,
+                unit="ml/L", key="mod3_sand_gauge_B", green_zone=[48, 52],
+                start_value=initial_values.get("conc_b") # <-- Pass start value
+            )
 
 
 # =====================================================================================
@@ -185,31 +251,46 @@ def render_module7_corrector_ui() -> Dict[str, Any]:
         user_inputs['submitted'] = st.form_submit_button("Calculate Correction")
     return user_inputs
 
-def display_module7_correction(result: Dict[str, Any]):
+def display_module7_correction(result: Dict[str, Any], initial_values: Dict[str, float]):
     """Displays the calculated correction recipe for Module 7."""
     with st.expander("View Correction and Final State", expanded=True):
+        # ... (keep existing code for status, recipe display) ...
         st.header("2. Recommended Correction")
         status = result.get("status")
-        if not status: return # Don't display if there's no result yet
-        
+        if not status: return
         if status == "PERFECT":
             st.success(f"✅ {result.get('message')}")
             return
-        
         add_water, add_makeup = result.get("add_water", 0), result.get("add_makeup", 0)
-        if status == "PERFECT_CORRECTION": st.success("✅ A perfect correction is possible with the recipe below.")
+        if status == "PERFECT_CORRECTION": st.success("✅ A perfect correction is possible.")
         elif status == "BEST_POSSIBLE_CORRECTION": st.warning("⚠️ A perfect correction is not possible. The recipe below provides the best possible correction.")
-        
         col1, col2 = st.columns(2)
         col1.metric("Action: Add Makeup Solution", f"{add_makeup:.2f} L")
         col2.metric("Action: Add Water", f"{add_water:.2f} L")
         
         st.header("3. Final Predicted State")
+        final_cond = result.get('final_cond', 0)
+        final_cu = result.get('final_cu', 0)
+        final_h2o2 = result.get('final_h2o2', 0)
+
+        # --- High-Level Status Summary (New!) ---
+        # NOTE: Define your acceptable green zones here
+        is_cond_good = 175 <= final_cond <= 185
+        is_cu_good = 19 <= final_cu <= 21
+        is_h2o2_good = 6.0 <= final_h2o2 <= 7.0
+        if is_cond_good and is_cu_good and is_h2o2_good:
+            st.success("✅ **Success!** All concentrations are within the optimal range.")
+        else:
+            st.error("❌ **Warning!** At least one concentration is outside the optimal range.")
+
         st.metric("New Tank Volume", f"{result.get('final_volume', 0):.2f} L")
         col1, col2, col3 = st.columns(3)
-        with col1: display_gauge("Conditioner", result.get('final_cond', 0), MODULE7_TARGET_CONDITION_ML_L, "ml/L", "m7_corr_gauge_cond")
-        with col2: display_gauge("Cu Etch", result.get('final_cu', 0), MODULE7_TARGET_CU_ETCH_G_L, "g/L", "m7_corr_gauge_cu")
-        with col3: display_gauge("H2O2", result.get('final_h2o2', 0), MODULE7_TARGET_H2O2_ML_L, "ml/L", "m7_corr_gauge_h2o2")
+        with col1:
+            display_gauge("Conditioner", final_cond, MODULE7_TARGET_CONDITION_ML_L, "ml/L", "m7_corr_gauge_cond", start_value=initial_values.get("cond"))
+        with col2:
+            display_gauge("Cu Etch", final_cu, MODULE7_TARGET_CU_ETCH_G_L, "g/L", "m7_corr_gauge_cu", start_value=initial_values.get("cu"))
+        with col3:
+            display_gauge("H2O2", final_h2o2, MODULE7_TARGET_H2O2_ML_L, "ml/L", "m7_corr_gauge_h2o2", start_value=initial_values.get("h2o2"))
 
 
 # --- Tab 5: Module 7 Sandbox ---
@@ -238,11 +319,28 @@ def render_module7_sandbox_ui() -> Dict[str, Any]:
     
     return {"start_volume": start_volume, "start_cond": start_cond, "start_cu": start_cu, "start_h2o2": start_h2o2, "water_to_add": water_to_add, "makeup_to_add": makeup_to_add}
 
-def display_module7_simulation(results: Dict[str, float]):
+def display_module7_simulation(results: Dict[str, float], initial_values: Dict[str, float]):
     """Displays the live results of the Module 7 sandbox simulation."""
     with st.expander("Live Results Dashboard", expanded=True):
+        final_cond = results['new_cond']
+        final_cu = results['new_cu']
+        final_h2o2 = results['new_h2o2']
+
+        # --- High-Level Status Summary (New!) ---
+        # NOTE: Define your acceptable green zones here
+        is_cond_good = 175 <= final_cond <= 185
+        is_cu_good = 19 <= final_cu <= 21
+        is_h2o2_good = 6.0 <= final_h2o2 <= 7.0
+        if is_cond_good and is_cu_good and is_h2o2_good:
+            st.success("✅ **Success!** All concentrations are within the optimal range.")
+        else:
+            st.warning("⚠️ **Alert!** At least one concentration is outside the optimal range.")
+
         st.metric("New Tank Volume", f"{results['new_volume']:.2f} L")
         col1, col2, col3 = st.columns(3)
-        with col1: display_gauge("Conditioner", results['new_cond'], MODULE7_TARGET_CONDITION_ML_L, "ml/L", "m7_sand_gauge_cond")
-        with col2: display_gauge("Cu Etch", results['new_cu'], MODULE7_TARGET_CU_ETCH_G_L, "g/L", "m7_sand_gauge_cu")
-        with col3: display_gauge("H2O2", results['new_h2o2'], MODULE7_TARGET_H2O2_ML_L, "ml/L", "m7_sand_gauge_h2o2")
+        with col1:
+            display_gauge("Conditioner", final_cond, MODULE7_TARGET_CONDITION_ML_L, "ml/L", "m7_sand_gauge_cond", start_value=initial_values.get("cond"))
+        with col2:
+            display_gauge("Cu Etch", final_cu, MODULE7_TARGET_CU_ETCH_G_L, "g/L", "m7_sand_gauge_cu", start_value=initial_values.get("cu"))
+        with col3:
+            display_gauge("H2O2", final_h2o2, MODULE7_TARGET_H2O2_ML_L, "ml/L", "m7_sand_gauge_h2o2", start_value=initial_values.get("h2o2"))
