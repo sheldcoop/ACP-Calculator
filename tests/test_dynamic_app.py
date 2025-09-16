@@ -48,8 +48,11 @@ class TestDynamicApp(unittest.TestCase):
         self.assertEqual(len(loaded), 2)
         self.assertEqual(loaded[0]['name'], "Test Module 2-Comp")
 
-    def test_dispatch_2_component_corrector(self):
-        """Test the dispatcher for a 2-component module."""
+    def test_corrector_with_imbalanced_makeup(self):
+        """
+        Test the dispatcher with a makeup solution that is different from the target,
+        which should produce a different result than the simple case.
+        """
         module_config = self.test_config[0]
         inputs = {
             "current_volume": 100.0,
@@ -57,6 +60,27 @@ class TestDynamicApp(unittest.TestCase):
             "current_B": 45.0,
             "target_A": 120.0,
             "target_B": 50.0,
+            "makeup_A": 100.0,  # Makeup is weaker than target
+            "makeup_B": 60.0   # Makeup is stronger than target
+        }
+
+        result = dispatch_calculation(module_config, inputs)
+
+        self.assertIn("status", result)
+        self.assertEqual(result['status'], "OPTIMAL_FORTIFICATION")
+        # A different result is expected because of the different makeup
+        self.assertAlmostEqual(result['final_A'], 120.00, places=2)
+        self.assertAlmostEqual(result['final_B'], 50.00, places=2)
+
+    def test_corrector_with_target_override(self):
+        """Test that overriding the target produces a different result."""
+        module_config = self.test_config[0]
+        inputs = {
+            "current_volume": 100.0,
+            "current_A": 150.0,
+            "current_B": 45.0,
+            "target_A": 140.0,  # Higher target than default
+            "target_B": 48.0,   # Lower target than default
             "makeup_A": 120.0,
             "makeup_B": 50.0
         }
@@ -65,9 +89,9 @@ class TestDynamicApp(unittest.TestCase):
 
         self.assertIn("status", result)
         self.assertEqual(result['status'], "OPTIMAL_FORTIFICATION")
-        self.assertGreater(result['add_makeup'], 0)
-        self.assertAlmostEqual(result['final_A'], 122.59, places=2)
-        self.assertAlmostEqual(result['final_B'], 43.79, places=2)
+        # The result should be different from the default target test
+        self.assertAlmostEqual(result['final_A'], 139.78, places=2)
+        self.assertAlmostEqual(result['final_B'], 46.70, places=2)
 
     def test_dispatch_3_component_corrector_dilution(self):
         """Test the dispatcher for a 3-component module in a dilution case."""

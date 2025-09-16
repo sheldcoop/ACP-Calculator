@@ -108,14 +108,32 @@ def render_dynamic_module_ui(module_config: Dict[str, Any]):
                         key=f"input_chem_{module_config['name']}_{chemical['internal_id']}"
                     )
 
-        with st.expander("Target & Makeup Concentrations"):
-            st.info("Targets are based on the values you provided in the setup. Makeup solution is assumed to be at target concentration.")
-            # In a future version, these could be made editable here.
-            for chemical in module_config['chemicals']:
-                st.text(f"Target for {chemical['name']}: {chemical['target']} {chemical['unit']}")
-                # Pass targets and makeup values into the inputs dict for the calculation
-                inputs[f"target_{chemical['internal_id']}"] = chemical['target']
-                inputs[f"makeup_{chemical['internal_id']}"] = chemical['target']
+        with st.expander("Target Concentrations (Override)"):
+            cols = st.columns(len(module_config['chemicals']))
+            for i, chemical in enumerate(module_config['chemicals']):
+                with cols[i]:
+                    inputs[f"target_{chemical['internal_id']}"] = st.number_input(
+                        f"Target '{chemical['name']}'",
+                        min_value=0.0,
+                        value=float(chemical['target']),
+                        step=1.0,
+                        format="%.2f",
+                        key=f"target_chem_{module_config['name']}_{chemical['internal_id']}"
+                    )
+
+        with st.expander("Makeup Solution Concentrations"):
+            cols = st.columns(len(module_config['chemicals']))
+            for i, chemical in enumerate(module_config['chemicals']):
+                with cols[i]:
+                    inputs[f"makeup_{chemical['internal_id']}"] = st.number_input(
+                        f"Makeup '{chemical['name']}' ({chemical['unit']})",
+                        min_value=0.0,
+                        # Default makeup to be the same as the target
+                        value=float(chemical['target']),
+                        step=1.0,
+                        format="%.2f",
+                        key=f"makeup_chem_{module_config['name']}_{chemical['internal_id']}"
+                    )
 
 
         submitted = st.form_submit_button("Calculate Correction")
