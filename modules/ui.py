@@ -228,15 +228,7 @@ def render_config_editor(config_in_progress: List[Dict[str, Any]]):
             # --- Module Settings in Columns ---
             c1, c2, c3 = st.columns(3)
             with c1:
-                original_name = module.get('name', '')
-                new_name = st.text_input("Module Name", value=original_name, key=f"mod_name_{i}")
-                if new_name != original_name:
-                    if st.session_state.main_app_state["selected_module_name"] == original_name:
-                        st.session_state.main_app_state["selected_module_name"] = new_name
-                    module['name'] = new_name
-                    st.rerun()
-                else:
-                    module['name'] = new_name
+                module['name'] = st.text_input("Module Name", value=module.get('name', ''), key=f"mod_name_{i}")
             with c2:
                 module['module_type'] = st.selectbox(
                     "Calculation Type",
