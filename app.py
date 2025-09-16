@@ -12,13 +12,12 @@ import os
 # Import configuration and UI modules
 from config.manager import load_config
 from pages.setup import render_setup_page
+from modules.calculation import dispatch_calculation, dispatch_simulation
 from modules.ui import (
     render_dynamic_module_ui,
     display_dynamic_correction,
-    display_dynamic_sandbox,
+    render_dynamic_sandbox_ui,
 )
-from modules.calculation import dispatch_calculation, dispatch_simulation
-from modules.ui import render_dynamic_module_ui, display_dynamic_correction, render_dynamic_sandbox_ui
 
 def main():
     """
