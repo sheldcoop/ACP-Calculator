@@ -64,10 +64,19 @@ def render_setup_page():
 
         if is_valid:
             save_config(config_in_progress)
-            st.success("Configuration saved! The application will now reload.")
-            st.info("Please close this setup and run `streamlit run app.py` to launch the application.")
-            # In a real-world scenario, you might trigger a programmatic rerun.
-            # For this context, instructing the user is sufficient.
+            st.session_state.setup_complete = True
+            st.rerun()
+
+# --- Post-Save Display ---
+if st.session_state.get("setup_complete", False):
+    st.success("Configuration saved successfully!")
+
+    if st.button("🚀 Launch Tank Manager"):
+        # Clear the setup state before switching pages
+        del st.session_state.setup_complete
+        if 'setup_config' in st.session_state:
+            del st.session_state.setup_config
+        st.switch_page("pages/1_Tank_Manager.py")
 
 if __name__ == "__main__":
     render_setup_page()
