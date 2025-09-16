@@ -10,6 +10,8 @@ import streamlit as st
 from typing import Dict, Any, Optional, List
 import plotly.graph_objects as go
 import math
+import time
+import numpy as np
 
 # Import the default values and constants from the config file
 from .config import (
@@ -25,77 +27,226 @@ from .config import (
 
 # --- UI Helper Functions ---
 
+def inject_custom_css():
+    """Injects custom CSS to style the app, creating the 'Mission Control' theme."""
+    st.markdown(
+        """
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=IBM+Plex+Mono:wght@500&display=swap');
+
+            /* --- Base Font --- */
+            html, body, [class*="st-"], .st-emotion-cache-10trblm {
+                font-family: 'Inter', sans-serif;
+            }
+
+            h1, h2, h3 {
+                font-family: 'Inter', sans-serif;
+                font-weight: 700;
+                color: #F0F2F6; /* Ensure headers are light */
+            }
+
+            h1 {
+                text-shadow: 0 0 8px rgba(0, 169, 255, 0.5);
+            }
+
+            /* --- Glass Panel Cards for Expanders --- */
+            div[data-testid="stExpander"] {
+                background-color: rgba(44, 58, 71, 0.5); /* secondaryBackgroundColor with alpha */
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
+
+            div[data-testid="stExpander"] summary {
+                font-size: 1.1rem;
+                font-weight: 600;
+                color: #F0F2F6;
+            }
+
+            /* Remove the border around the main content area of the expander */
+            div[data-testid="stExpander"] [data-testid="stVerticalBlock"] {
+                 border: none !important;
+            }
+
+
+            /* --- Monospace for numbers --- */
+            div[data-testid="stMetricValue"], .stNumberInput input {
+                font-family: 'IBM Plex Mono', monospace;
+                font-weight: 500;
+                color: #00A9FF; /* Make metrics glow */
+                text-shadow: 0 0 5px rgba(0, 169, 255, 0.5);
+            }
+
+            /* --- Button Styling --- */
+            .stButton>button {
+                border-radius: 8px;
+                border: 1px solid #00A9FF;
+                color: #00A9FF;
+                background-color: transparent;
+                transition: all 0.2s ease-in-out;
+                font-weight: 600;
+            }
+
+            .stButton>button:hover {
+                background-color: #00A9FF;
+                color: #1A202C;
+                border: 1px solid #00A9FF;
+                box-shadow: 0 0 10px #00A9FF;
+            }
+
+            .stButton>button:focus {
+                box-shadow: 0 0 10px #00A9FF !important;
+                background-color: #00A9FF;
+                color: #1A202C;
+            }
+
+            /* --- Tab Styling --- */
+            button[data-baseweb="tab"] {
+                font-size: 1rem;
+                font-weight: 600;
+            }
+
+            /* --- Remove border from main block container --- */
+            .main .block-container {
+                padding-top: 2rem; /* Add some space at the top */
+            }
+
+            /* --- Custom Alert Boxes --- */
+            div[data-baseweb="notification"] {
+                background-color: rgba(44, 58, 71, 0.7);
+                border-radius: 10px;
+                border: 1px solid;
+            }
+            div[data-baseweb="notification"][class*="kind-success"] {
+                border-color: rgba(51, 255, 153, 0.5);
+            }
+            div[data-baseweb="notification"][class*="kind-info"] {
+                border-color: rgba(0, 169, 255, 0.5);
+            }
+            div[data-baseweb="notification"][class*="kind-warning"] {
+                border-color: rgba(255, 195, 0, 0.5);
+            }
+            div[data-baseweb="notification"][class*="kind-error"] {
+                border-color: rgba(255, 107, 107, 0.5);
+            }
+
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def display_gauge(
     label: str,
     value: float,
     target: float,
     unit: str,
-    key: str,
+    key: str, # Keep key for uniqueness
     start_value: Optional[float] = None,
     green_zone: Optional[List[float]] = None,
     tick_interval: Optional[float] = None
 ):
-    """Displays a sleek, modern gauge chart for a given metric with a delta indicator."""
+    """Displays a sleek, 'Mission Control' style gauge with animation."""
 
-    # --- Delta Calculation Logic (New!) ---
-    delta_text = ""
+    # Helper to create the figure
+    def _create_figure(val):
+        # --- Delta Indicator Logic ---
+        delta_text = ""
+        # The delta should always compare the FINAL value to the start_value
+        if start_value is not None and not math.isclose(start_value, value):
+            delta = value - start_value
+            if delta > 0:
+                # Use a less intrusive color that fits the theme
+                delta_text = f"<span style='color:#33FF99; font-size:0.8em;'> (▲ +{delta:.2f})</span>"
+            else:
+                # Use a less intrusive color that fits the theme
+                delta_text = f"<span style='color:#FF6B6B; font-size:0.8em;'> (▼ {delta:.2f})</span>"
+
+        # --- Color & Zone Definitions ---
+        colors = {"danger": "#3D566D", "warning": "#48D1CC", "good": "#00A9FF"}
+        if green_zone:
+            max_val = target * 2.5 # Give more room for the gauge
+            # Ensure zones don't overlap and cover the range
+            steps = [
+                {'range': [0, green_zone[0]], 'color': colors['danger']},
+                {'range': green_zone, 'color': colors['good']},
+                {'range': [green_zone[1], max_val], 'color': colors['danger']}
+            ]
+        else: # Fallback if no green_zone is defined
+            max_val = target * 2.5
+            steps = [{'range': [0, max_val], 'color': colors['danger']}]
+
+        # --- Axis Configuration ---
+        axis_config = {
+            'range': [0, max_val],
+            'tickwidth': 1,
+            'tickcolor': "#F0F2F6", # Light text color
+            'tickfont': {'color': "#F0F2F6"}
+        }
+        if tick_interval:
+            axis_config['dtick'] = tick_interval
+
+        # --- Figure Creation ---
+        fig = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=val, # Use the passed-in value for animation
+            title={
+                'text': f"<b>{label}</b><br><span style='font-size:0.8em;color:gray'>{unit}</span>{delta_text}",
+                'align': 'center',
+                'font': {'color': "#F0F2F6", 'family': "Inter"}
+            },
+            number={
+                'valueformat': '.2f',
+                'suffix': f" / {target:.2f}",
+                'font': {'family': "IBM Plex Mono", 'color': "#00A9FF"} # This color will be overridden by CSS glow
+            },
+            gauge={
+                'axis': axis_config,
+                'bar': {'color': "rgba(0, 169, 255, 0.7)", 'thickness': 0}, # Main value bar - thickness 0 makes it invisible but still drives the needle
+                'bgcolor': 'rgba(0,0,0,0)',
+                'steps': steps,
+                'threshold': {
+                    'line': {'color': "#FFFFFF", 'width': 3},
+                    'thickness': 0.9,
+                    'value': target
+                }
+            }))
+
+        fig.update_layout(
+            height=250,
+            margin=dict(l=20, r=20, t=80, b=20),
+            paper_bgcolor='rgba(0,0,0,0)', # Transparent background
+            font={'color': "#F0F2F6", 'family': "Inter"}
+        )
+        return fig
+
+    # --- Animation Logic ---
+    # Animate only if start_value is provided and different from the end value
     if start_value is not None and not math.isclose(start_value, value):
-        delta = value - start_value
-        if delta > 0:
-            delta_text = f"<span style='color:green; font-size:0.8em;'> (▲ +{delta:.2f})</span>"
-        else:
-            delta_text = f"<span style='color:red; font-size:0.8em;'> (▼ {delta:.2f})</span>"
+        gauge_placeholder = st.empty()
 
-    # --- Existing Gauge Logic (Unchanged) ---
-    colors = {"red": "#FF4B4B", "yellow": "#FFC300", "green": "#28A745"}
-    if green_zone:
-        max_val = target * 2
-        steps = [
-            {'range': [0, green_zone[0]], 'color': colors['red']},
-            {'range': green_zone, 'color': colors['green']},
-            {'range': [green_zone[1], max_val], 'color': colors['red']}
-        ]
+        animation_steps = 20
+        animation_duration = 0.5 # seconds
+
+        # Animate from start_value to value
+        for i in range(animation_steps + 1):
+            # Interpolate value
+            interp_value = np.interp(i, [0, animation_steps], [start_value, value])
+
+            # Create the figure with the intermediate value
+            fig = _create_figure(interp_value)
+
+            # Update the placeholder
+            gauge_placeholder.plotly_chart(fig, use_container_width=True)
+
+            # Pause
+            time.sleep(animation_duration / animation_steps)
     else:
-        tolerance_green = 0.05 * target
-        tolerance_yellow = 0.10 * target
-        zone_green = [target - tolerance_green, target + tolerance_green]
-        zone_yellow_low = [target - tolerance_yellow, zone_green[0]]
-        zone_yellow_high = [zone_green[1], target + tolerance_yellow]
-        max_val = target * 2
-        steps = [
-            {'range': [0, zone_yellow_low[0]], 'color': colors['red']},
-            {'range': zone_yellow_low, 'color': colors['yellow']},
-            {'range': zone_green, 'color': colors['green']},
-            {'range': zone_yellow_high, 'color': colors['yellow']},
-            {'range': [zone_yellow_high[1], max_val], 'color': colors['red']}
-        ]
-
-    axis_config = {'range': [0, max_val], 'tickwidth': 1, 'tickcolor': "darkblue"}
-    if tick_interval:
-        axis_config['dtick'] = tick_interval
-
-    # --- Color Logic for the Number ---
-    number_color = "darkblue" # Default color
-    if green_zone:
-        if green_zone[0] <= value <= green_zone[1]:
-            number_color = colors['green']
-        else:
-            number_color = colors['red']
-
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=value,
-        title={'text': f"<b>{label}</b><br><span style='font-size:0.8em;color:gray'>{unit}</span>{delta_text}", 'align': 'center'},
-        number={'valueformat': '.2f', 'suffix': f" / {target:.2f}", 'font': {'color': number_color}},
-        gauge={
-            'axis': axis_config,
-            'bar': {'color': "rgba(0,0,0,0.1)"},
-            'steps': steps,
-            'threshold': {'line': {'color': "black", 'width': 4}, 'thickness': 0.9, 'value': target}
-        }))
-
-    fig.update_layout(height=250, margin=dict(l=20, r=20, t=80, b=20), font={'color': "darkblue", 'family': "Arial"})
-    st.plotly_chart(fig, use_container_width=True, key=f"gauge_{key}")
+        # Just draw the final gauge without animation
+        fig = _create_figure(value)
+        st.plotly_chart(fig, use_container_width=True, key=f"gauge_{key}")
 
 
 # --- Tab 1: Makeup Tank Refill ---

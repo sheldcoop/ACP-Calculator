@@ -16,6 +16,7 @@ from modules.config import (
     DEFAULT_TARGET_A_ML_L, DEFAULT_TARGET_B_ML_L
 )
 from modules.ui import (
+    inject_custom_css,
     render_makeup_tank_ui,
     display_makeup_recipe,
     render_module3_ui,
@@ -40,6 +41,7 @@ def main():
     Main function to configure and run the Streamlit application.
     """
     st.set_page_config(page_title=APP_TITLE, layout="wide")
+    inject_custom_css()
     st.title(APP_TITLE)
     st.markdown("---")
 
