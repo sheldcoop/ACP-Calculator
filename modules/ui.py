@@ -200,7 +200,25 @@ def render_config_editor(config_in_progress: List[Dict[str, Any]]):
 
     for i, module in enumerate(config_in_progress):
         st.markdown("---")
-        st.header(f"Module {i + 1}: {module.get('name', 'New Module')}")
+
+        # --- Module Header and Management Buttons ---
+        header_cols = st.columns([0.6, 0.15, 0.1, 0.1, 0.05])
+        with header_cols[0]:
+            st.header(f"Module {i + 1}: {module.get('name', 'New Module')}")
+        with header_cols[1]:
+            if st.button("Delete", key=f"delete_mod_{i}", type="secondary"):
+                config_in_progress.pop(i)
+                st.rerun()
+        with header_cols[2]:
+            if i > 0:
+                if st.button("▲", key=f"up_mod_{i}"):
+                    config_in_progress.insert(i - 1, config_in_progress.pop(i))
+                    st.rerun()
+        with header_cols[3]:
+            if i < len(config_in_progress) - 1:
+                if st.button("▼", key=f"down_mod_{i}"):
+                    config_in_progress.insert(i + 1, config_in_progress.pop(i))
+                    st.rerun()
 
         with st.expander("Module Settings", expanded=True):
             module['name'] = st.text_input("Module Name", value=module.get('name', ''), key=f"mod_name_{i}")
@@ -234,11 +252,27 @@ def render_config_editor(config_in_progress: List[Dict[str, Any]]):
                 with st.expander("Advanced Gauge Options"):
                     col1, col2, col3 = st.columns(3)
                     with col1:
-                        new_chem_data['green_zone_min'] = st.number_input("Optimal Range Min", value=chem.get('green_zone_min', new_chem_data['target'] * 0.9), key=f"chem_gz_min_{i}_{j}")
+                        new_chem_data['green_zone_min'] = st.number_input(
+                            "Optimal Range Min",
+                            value=chem.get('green_zone_min', new_chem_data['target'] * 0.9),
+                            key=f"chem_gz_min_{i}_{j}",
+                            help="The lower bound of the green 'optimal' zone on the display gauge."
+                        )
                     with col2:
-                        new_chem_data['green_zone_max'] = st.number_input("Optimal Range Max", value=chem.get('green_zone_max', new_chem_data['target'] * 1.1), key=f"chem_gz_max_{i}_{j}")
+                        new_chem_data['green_zone_max'] = st.number_input(
+                            "Optimal Range Max",
+                            value=chem.get('green_zone_max', new_chem_data['target'] * 1.1),
+                            key=f"chem_gz_max_{i}_{j}",
+                            help="The upper bound of the green 'optimal' zone on the display gauge."
+                        )
                     with col3:
-                        new_chem_data['tick_interval'] = st.number_input("Tick Interval", min_value=0.0, value=chem.get('tick_interval', new_chem_data['target'] / 5.0), key=f"chem_tick_{i}_{j}")
+                        new_chem_data['tick_interval'] = st.number_input(
+                            "Tick Interval",
+                            min_value=0.0,
+                            value=chem.get('tick_interval', new_chem_data['target'] / 5.0),
+                            key=f"chem_tick_{i}_{j}",
+                            help="The spacing between numbered marks on the gauge dial."
+                        )
 
                 new_chemicals_data.append(new_chem_data)
 

@@ -184,6 +184,29 @@ class TestDynamicApp(unittest.TestCase):
         self.assertEqual(second_chemical['green_zone_max'], 20.0)
         self.assertEqual(second_chemical['tick_interval'], 2.0)
 
+    def test_module_deletion_and_reordering(self):
+        """Tests the deletion and reordering logic for modules."""
+        config = [
+            {"name": "Module A"},
+            {"name": "Module B"},
+            {"name": "Module C"}
+        ]
+
+        # Simulate deleting Module B (at index 1)
+        config.pop(1)
+        self.assertEqual(len(config), 2)
+        self.assertEqual(config[1]['name'], "Module C")
+
+        # Simulate moving Module C (now at index 1) up
+        config.insert(0, config.pop(1))
+        self.assertEqual(config[0]['name'], "Module C")
+        self.assertEqual(config[1]['name'], "Module A")
+
+        # Simulate moving Module C back down
+        config.insert(1, config.pop(0))
+        self.assertEqual(config[0]['name'], "Module A")
+        self.assertEqual(config[1]['name'], "Module C")
+
 
 if __name__ == '__main__':
     unittest.main()
