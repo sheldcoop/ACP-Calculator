@@ -11,7 +11,7 @@ import os
 import copy
 
 # Import configuration and UI modules
-from config.manager import load_config
+from config.manager import load_config, save_config
 from pages.setup import render_setup_page
 from modules.calculation import dispatch_calculation, dispatch_simulation
 from modules.ui import (
