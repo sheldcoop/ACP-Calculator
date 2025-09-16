@@ -155,8 +155,8 @@ def display_module3_correction(result: Dict[str, Any], initial_values: Dict[str,
         final_conc_b = result.get("final_conc_b", 0)
 
         # --- High-Level Status Summary (New!) ---
-        is_a_good = 115 <= final_conc_a <= 125
-        is_b_good = 48 <= final_conc_b <= 52
+        is_a_good = 110 <= final_conc_a <= 140
+        is_b_good = 40 <= final_conc_b <= 60
         if is_a_good and is_b_good:
             st.success("✅ **Success!** All concentrations are within the optimal range.")
         else:
@@ -168,13 +168,13 @@ def display_module3_correction(result: Dict[str, Any], initial_values: Dict[str,
         with col1:
             display_gauge(
                 label="Concentration A", value=final_conc_a, target=DEFAULT_TARGET_A_ML_L,
-                unit="ml/L", key="mod3_corr_gauge_A", green_zone=[115, 125],
+                unit="ml/L", key="mod3_corr_gauge_A", green_zone=[110, 140],
                 start_value=initial_values.get("conc_a") # <-- Pass start value
             )
         with col2:
             display_gauge(
                 label="Concentration B", value=final_conc_b, target=DEFAULT_TARGET_B_ML_L,
-                unit="ml/L", key="mod3_corr_gauge_B", green_zone=[48, 52],
+                unit="ml/L", key="mod3_corr_gauge_B", green_zone=[40, 60],
                 start_value=initial_values.get("conc_b") # <-- Pass start value
             )
 
@@ -207,8 +207,8 @@ def display_simulation_results(results: Dict[str, float], initial_values: Dict[s
         final_conc_b = results['new_conc_b']
 
         # --- High-Level Status Summary (New!) ---
-        is_a_good = 115 <= final_conc_a <= 125
-        is_b_good = 48 <= final_conc_b <= 52
+        is_a_good = 110 <= final_conc_a <= 140
+        is_b_good = 40 <= final_conc_b <= 60
         if is_a_good and is_b_good:
             st.success("✅ **Success!** All concentrations are within the optimal range.")
         else:
@@ -220,13 +220,13 @@ def display_simulation_results(results: Dict[str, float], initial_values: Dict[s
         with col1:
             display_gauge(
                 label="Concentration A", value=final_conc_a, target=DEFAULT_TARGET_A_ML_L,
-                unit="ml/L", key="mod3_sand_gauge_A", green_zone=[115, 125],
+                unit="ml/L", key="mod3_sand_gauge_A", green_zone=[110, 140],
                 start_value=initial_values.get("conc_a") # <-- Pass start value
             )
         with col2:
             display_gauge(
                 label="Concentration B", value=final_conc_b, target=DEFAULT_TARGET_B_ML_L,
-                unit="ml/L", key="mod3_sand_gauge_B", green_zone=[48, 52],
+                unit="ml/L", key="mod3_sand_gauge_B", green_zone=[40, 60],
                 start_value=initial_values.get("conc_b") # <-- Pass start value
             )
 
