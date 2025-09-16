@@ -1,23 +1,28 @@
 # =====================================================================================
-# STREAMLIT THEME CONFIGURATION - "MISSION CONTROL"
+# STREAMLIT THEME CONFIGURATION
 # =====================================================================================
-# This file defines a custom dark theme for the Streamlit application, inspired by
-# high-tech dashboards in aerospace and data centers.
+# This file defines a custom theme for the Streamlit application, inspired by the
+# corporate branding of AT&S.
+#
+# For more information on theming, see the Streamlit documentation:
+# https://docs.streamlit.io/library/advanced-features/theming
 # =====================================================================================
 
 [theme]
 
-# A vibrant, glowing blue for interactive elements.
-primaryColor = "#00A9FF"
+# The primary color for interactive elements like buttons, sliders, etc.
+# This is a corporate blue inspired by the AT&S logo.
+primaryColor = "#004488"
 
-# A deep, near-black charcoal for the main background.
-backgroundColor = "#1A202C"
+# The main background color of the application.
+backgroundColor = "#FFFFFF"
 
-# A slightly lighter dark color for cards and secondary areas.
-secondaryBackgroundColor = "#2C3A47"
+# The background color for elements like the sidebar and expanded sections.
+secondaryBackgroundColor = "#F0F2F6"
 
-# A light, readable grey for all primary text.
-textColor = "#F0F2F6"
+# The default color for all text in the application.
+textColor = "#31333F"
 
-# The base font family. Specific fonts will be loaded via custom CSS.
+# The font family for the application.
+# Options: "sans serif", "serif", or "monospace"
 font = "sans serif"
