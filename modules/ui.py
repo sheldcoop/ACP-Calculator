@@ -331,7 +331,7 @@ def display_module7_correction(result: Dict[str, Any], initial_values: Dict[str,
         # NOTE: You can customize these green zones if needed
         is_cond_good = 160 <= final_cond <= 200
         is_cu_good = 18 <= final_cu <= 22
-        is_h2o2_good = 4.0 <= final_h2o2 <= 8.0
+        is_h2o2_good = 5.0 <= final_h2o2 <= 8.0
 
         if is_cond_good and is_cu_good and is_h2o2_good:
             st.success("✅ **Success!** All concentrations are within the optimal range.")
@@ -346,7 +346,7 @@ def display_module7_correction(result: Dict[str, Any], initial_values: Dict[str,
         with col2:
             display_gauge("Cu Etch", final_cu, targets['cu'], "g/L", "m7_corr_gauge_cu", start_value=initial_values.get("cu"), green_zone=[18, 22], tick_interval=2)
         with col3:
-            display_gauge("H2O2", final_h2o2, targets['h2o2'], "ml/L", "m7_corr_gauge_h2o2", start_value=initial_values.get("h2o2"), green_zone=[6, 8], tick_interval=1)
+            display_gauge("H2O2", final_h2o2, targets['h2o2'], "ml/L", "m7_corr_gauge_h2o2", start_value=initial_values.get("h2o2"), green_zone=[5, 8], tick_interval=1)
 
 # modules/ui.py
 
@@ -410,7 +410,7 @@ def display_module7_simulation(results: Dict[str, float], initial_values: Dict[s
         # High-Level Status Summary
         is_cond_good = 160 <= final_cond <= 200
         is_cu_good = 18 <= final_cu <= 22
-        is_h2o2_good = 5.0 <= final_h2o2 <= 9.0
+        is_h2o2_good = 5.0 <= final_h2o2 <= 8.0
         if is_cond_good and is_cu_good and is_h2o2_good:
             st.success("✅ **Success!** All concentrations are within the optimal range.")
         else:
