@@ -136,7 +136,11 @@ def main():
             display_module7_correction(
                 m7_correction_result,
                 initial_values_m7,
-                targets=m7_inputs
+                targets={
+                    "cond": m7_inputs['target_cond'],
+                    "cu": m7_inputs['target_cu'],
+                    "h2o2": m7_inputs['target_h2o2']
+                }
             )
 
     # --- Tab 5: Module 7 Sandbox ---
