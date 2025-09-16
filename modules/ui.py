@@ -275,9 +275,9 @@ def display_module7_correction(result: Dict[str, Any], initial_values: Dict[str,
 
         # --- High-Level Status Summary (New!) ---
         # NOTE: Define your acceptable green zones here
-        is_cond_good = 175 <= final_cond <= 185
-        is_cu_good = 19 <= final_cu <= 21
-        is_h2o2_good = 6.0 <= final_h2o2 <= 7.0
+        is_cond_good = 160 <= final_cond <= 200
+        is_cu_good = 18 <= final_cu <= 22
+        is_h2o2_good = 6.0 <= final_h2o2 <= 8.0
         if is_cond_good and is_cu_good and is_h2o2_good:
             st.success("✅ **Success!** All concentrations are within the optimal range.")
         else:
@@ -286,11 +286,11 @@ def display_module7_correction(result: Dict[str, Any], initial_values: Dict[str,
         st.metric("New Tank Volume", f"{result.get('final_volume', 0):.2f} L")
         col1, col2, col3 = st.columns(3)
         with col1:
-            display_gauge("Conditioner", final_cond, MODULE7_TARGET_CONDITION_ML_L, "ml/L", "m7_corr_gauge_cond", start_value=initial_values.get("cond"))
+            display_gauge("Conditioner", final_cond, MODULE7_TARGET_CONDITION_ML_L, "ml/L", "m7_corr_gauge_cond", start_value=initial_values.get("cond"), green_zone=[160, 200])
         with col2:
-            display_gauge("Cu Etch", final_cu, MODULE7_TARGET_CU_ETCH_G_L, "g/L", "m7_corr_gauge_cu", start_value=initial_values.get("cu"))
+            display_gauge("Cu Etch", final_cu, MODULE7_TARGET_CU_ETCH_G_L, "g/L", "m7_corr_gauge_cu", start_value=initial_values.get("cu"), green_zone=[18, 22])
         with col3:
-            display_gauge("H2O2", final_h2o2, MODULE7_TARGET_H2O2_ML_L, "ml/L", "m7_corr_gauge_h2o2", start_value=initial_values.get("h2o2"))
+            display_gauge("H2O2", final_h2o2, MODULE7_TARGET_H2O2_ML_L, "ml/L", "m7_corr_gauge_h2o2", start_value=initial_values.get("h2o2"), green_zone=[6, 8])
 
 
 # --- Tab 5: Module 7 Sandbox ---
@@ -328,9 +328,9 @@ def display_module7_simulation(results: Dict[str, float], initial_values: Dict[s
 
         # --- High-Level Status Summary (New!) ---
         # NOTE: Define your acceptable green zones here
-        is_cond_good = 175 <= final_cond <= 185
-        is_cu_good = 19 <= final_cu <= 21
-        is_h2o2_good = 6.0 <= final_h2o2 <= 7.0
+        is_cond_good = 160 <= final_cond <= 200
+        is_cu_good = 18 <= final_cu <= 22
+        is_h2o2_good = 6.0 <= final_h2o2 <= 8.0
         if is_cond_good and is_cu_good and is_h2o2_good:
             st.success("✅ **Success!** All concentrations are within the optimal range.")
         else:
@@ -339,8 +339,8 @@ def display_module7_simulation(results: Dict[str, float], initial_values: Dict[s
         st.metric("New Tank Volume", f"{results['new_volume']:.2f} L")
         col1, col2, col3 = st.columns(3)
         with col1:
-            display_gauge("Conditioner", final_cond, MODULE7_TARGET_CONDITION_ML_L, "ml/L", "m7_sand_gauge_cond", start_value=initial_values.get("cond"))
+            display_gauge("Conditioner", final_cond, MODULE7_TARGET_CONDITION_ML_L, "ml/L", "m7_sand_gauge_cond", start_value=initial_values.get("cond"), green_zone=[160, 200])
         with col2:
-            display_gauge("Cu Etch", final_cu, MODULE7_TARGET_CU_ETCH_G_L, "g/L", "m7_sand_gauge_cu", start_value=initial_values.get("cu"))
+            display_gauge("Cu Etch", final_cu, MODULE7_TARGET_CU_ETCH_G_L, "g/L", "m7_sand_gauge_cu", start_value=initial_values.get("cu"), green_zone=[18, 22])
         with col3:
-            display_gauge("H2O2", final_h2o2, MODULE7_TARGET_H2O2_ML_L, "ml/L", "m7_sand_gauge_h2o2", start_value=initial_values.get("h2o2"))
+            display_gauge("H2O2", final_h2o2, MODULE7_TARGET_H2O2_ML_L, "ml/L", "m7_sand_gauge_h2o2", start_value=initial_values.get("h2o2"), green_zone=[6, 8])
