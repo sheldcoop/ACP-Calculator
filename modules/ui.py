@@ -31,8 +31,9 @@ def display_gauge(
     target: float,
     unit: str,
     key: str,
-    start_value: Optional[float] = None, # <-- Add this new argument
-    green_zone: Optional[List[float]] = None
+    start_value: Optional[float] = None,
+    green_zone: Optional[List[float]] = None,
+    tick_interval: Optional[float] = None
 ):
     """Displays a sleek, modern gauge chart for a given metric with a delta indicator."""
 
@@ -69,6 +70,10 @@ def display_gauge(
             {'range': [zone_yellow_high[1], max_val], 'color': colors['red']}
         ]
 
+    axis_config = {'range': [0, max_val], 'tickwidth': 1, 'tickcolor': "darkblue"}
+    if tick_interval:
+        axis_config['dtick'] = tick_interval
+
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=value,
@@ -76,7 +81,7 @@ def display_gauge(
         title={'text': f"<b>{label}</b><br><span style='font-size:0.8em;color:gray'>{unit}</span>{delta_text}", 'align': 'center'},
         number={'valueformat': '.2f', 'suffix': f" / {target:.2f}"},
         gauge={
-            'axis': {'range': [0, max_val], 'tickwidth': 1, 'tickcolor': "darkblue"},
+            'axis': axis_config,
             'bar': {'color': "rgba(0,0,0,0.1)"},
             'steps': steps,
             'threshold': {'line': {'color': "black", 'width': 4}, 'thickness': 0.9, 'value': target}
@@ -169,13 +174,13 @@ def display_module3_correction(result: Dict[str, Any], initial_values: Dict[str,
             display_gauge(
                 label="Concentration A", value=final_conc_a, target=DEFAULT_TARGET_A_ML_L,
                 unit="ml/L", key="mod3_corr_gauge_A", green_zone=[110, 140],
-                start_value=initial_values.get("conc_a") # <-- Pass start value
+                start_value=initial_values.get("conc_a"), tick_interval=20
             )
         with col2:
             display_gauge(
                 label="Concentration B", value=final_conc_b, target=DEFAULT_TARGET_B_ML_L,
                 unit="ml/L", key="mod3_corr_gauge_B", green_zone=[40, 60],
-                start_value=initial_values.get("conc_b") # <-- Pass start value
+                start_value=initial_values.get("conc_b"), tick_interval=10
             )
 
 
@@ -221,13 +226,13 @@ def display_simulation_results(results: Dict[str, float], initial_values: Dict[s
             display_gauge(
                 label="Concentration A", value=final_conc_a, target=DEFAULT_TARGET_A_ML_L,
                 unit="ml/L", key="mod3_sand_gauge_A", green_zone=[110, 140],
-                start_value=initial_values.get("conc_a") # <-- Pass start value
+                start_value=initial_values.get("conc_a"), tick_interval=20
             )
         with col2:
             display_gauge(
                 label="Concentration B", value=final_conc_b, target=DEFAULT_TARGET_B_ML_L,
                 unit="ml/L", key="mod3_sand_gauge_B", green_zone=[40, 60],
-                start_value=initial_values.get("conc_b") # <-- Pass start value
+                start_value=initial_values.get("conc_b"), tick_interval=10
             )
 
 
@@ -286,11 +291,11 @@ def display_module7_correction(result: Dict[str, Any], initial_values: Dict[str,
         st.metric("New Tank Volume", f"{result.get('final_volume', 0):.2f} L")
         col1, col2, col3 = st.columns(3)
         with col1:
-            display_gauge("Conditioner", final_cond, MODULE7_TARGET_CONDITION_ML_L, "ml/L", "m7_corr_gauge_cond", start_value=initial_values.get("cond"), green_zone=[160, 200])
+            display_gauge("Conditioner", final_cond, MODULE7_TARGET_CONDITION_ML_L, "ml/L", "m7_corr_gauge_cond", start_value=initial_values.get("cond"), green_zone=[160, 200], tick_interval=20)
         with col2:
-            display_gauge("Cu Etch", final_cu, MODULE7_TARGET_CU_ETCH_G_L, "g/L", "m7_corr_gauge_cu", start_value=initial_values.get("cu"), green_zone=[18, 22])
+            display_gauge("Cu Etch", final_cu, MODULE7_TARGET_CU_ETCH_G_L, "g/L", "m7_corr_gauge_cu", start_value=initial_values.get("cu"), green_zone=[18, 22], tick_interval=2)
         with col3:
-            display_gauge("H2O2", final_h2o2, MODULE7_TARGET_H2O2_ML_L, "ml/L", "m7_corr_gauge_h2o2", start_value=initial_values.get("h2o2"), green_zone=[6, 8])
+            display_gauge("H2O2", final_h2o2, MODULE7_TARGET_H2O2_ML_L, "ml/L", "m7_corr_gauge_h2o2", start_value=initial_values.get("h2o2"), green_zone=[6, 8], tick_interval=1)
 
 
 # --- Tab 5: Module 7 Sandbox ---
@@ -339,8 +344,8 @@ def display_module7_simulation(results: Dict[str, float], initial_values: Dict[s
         st.metric("New Tank Volume", f"{results['new_volume']:.2f} L")
         col1, col2, col3 = st.columns(3)
         with col1:
-            display_gauge("Conditioner", final_cond, MODULE7_TARGET_CONDITION_ML_L, "ml/L", "m7_sand_gauge_cond", start_value=initial_values.get("cond"), green_zone=[160, 200])
+            display_gauge("Conditioner", final_cond, MODULE7_TARGET_CONDITION_ML_L, "ml/L", "m7_sand_gauge_cond", start_value=initial_values.get("cond"), green_zone=[160, 200], tick_interval=20)
         with col2:
-            display_gauge("Cu Etch", final_cu, MODULE7_TARGET_CU_ETCH_G_L, "g/L", "m7_sand_gauge_cu", start_value=initial_values.get("cu"), green_zone=[18, 22])
+            display_gauge("Cu Etch", final_cu, MODULE7_TARGET_CU_ETCH_G_L, "g/L", "m7_sand_gauge_cu", start_value=initial_values.get("cu"), green_zone=[18, 22], tick_interval=2)
         with col3:
-            display_gauge("H2O2", final_h2o2, MODULE7_TARGET_H2O2_ML_L, "ml/L", "m7_sand_gauge_h2o2", start_value=initial_values.get("h2o2"), green_zone=[6, 8])
+            display_gauge("H2O2", final_h2o2, MODULE7_TARGET_H2O2_ML_L, "ml/L", "m7_sand_gauge_h2o2", start_value=initial_values.get("h2o2"), green_zone=[6, 8], tick_interval=1)
