@@ -130,34 +130,68 @@ class TestCalculation(unittest.TestCase):
 
     def test_module7_all_high(self):
         """
-        Test Case 3: Module 7 (All High)
-        - Start: 180 L, 190 Conditioner, 22 Cu Etch, 7.5 H2O2
-        - Target: 180 Conditioner, 20 Cu Etch, 7 H2O2
-        - Expected Result: Add a small, precise amount of water.
+        Test Case for Module 7 (All High - Dilution).
+        Checks that the dilution logic is triggered correctly.
         """
-        # Makeup concentrations are the target concentrations
-        makeup_cond_ml_l = 180.0
-        makeup_cu_g_l = 20.0
-        makeup_h2o2_ml_l = 7.0
+        target_cond = 180.0
+        target_cu = 20.0
+        target_h2o2 = 7.0
 
         result = calculate_module7_correction(
             current_volume=180.0,
-            current_cond_ml_l=190.0,
-            current_cu_g_l=22.0,
-            current_h2o2_ml_l=7.5,
-            target_cond_ml_l=makeup_cond_ml_l,
-            target_cu_g_l=makeup_cu_g_l,
-            target_h2o2_ml_l=makeup_h2o2_ml_l,
-            module7_total_volume=260.0  # Assuming a total volume of 260L
+            current_cond_ml_l=190.0, current_cu_g_l=22.0, current_h2o2_ml_l=7.5,
+            target_cond_ml_l=target_cond, target_cu_g_l=target_cu, target_h2o2_ml_l=target_h2o2,
+            makeup_cond_ml_l=target_cond, makeup_cu_g_l=target_cu, makeup_h2o2_ml_l=target_h2o2,
+            module7_total_volume=260.0
         )
 
-        # The expected result is a small amount of water, not a large top-up.
-        # The exact value depends on the vector projection calculation.
-        # We will check if the water added is greater than 0 and makeup is 0.
         self.assertGreater(result["add_water"], 0)
-        self.assertAlmostEqual(result["add_cond"], 0.0, places=2)
-        self.assertAlmostEqual(result["add_cu"], 0.0, places=2)
-        self.assertAlmostEqual(result["add_h2o2"], 0.0, places=2)
+        self.assertAlmostEqual(result["add_makeup"], 0.0, places=2)
+
+    def test_module7_optimizer_fortification(self):
+        """
+        Test Case for Module 7 (Fortification).
+        Checks that the optimizer correctly recommends adding makeup.
+        """
+        target_cond = 180.0
+        target_cu = 20.0
+        target_h2o2 = 7.0
+
+        result = calculate_module7_correction(
+            current_volume=180.0,
+            current_cond_ml_l=170.0, # Low
+            current_cu_g_l=18.0,   # Low
+            current_h2o2_ml_l=6.0,   # Low
+            target_cond_ml_l=target_cond, target_cu_g_l=target_cu, target_h2o2_ml_l=target_h2o2,
+            makeup_cond_ml_l=target_cond, makeup_cu_g_l=target_cu, makeup_h2o2_ml_l=target_h2o2,
+            module7_total_volume=250.0
+        )
+
+        self.assertGreater(result["add_makeup"], 0)
+        self.assertAlmostEqual(result["add_water"], 0.0, places=2)
+
+    def test_module7_optimizer_imbalanced_makeup(self):
+        """
+        Test Case for Module 7 (Imbalanced Makeup).
+        - Cond is low, Cu is high, H2O2 is low.
+        - Makeup helps Cond and H2O2 but hurts Cu.
+        - The optimizer should find a non-obvious mix of water and makeup.
+        """
+        result = calculate_module7_correction(
+            current_volume=200.0,
+            current_cond_ml_l=170.0, # Low
+            current_cu_g_l=23.0,   # High
+            current_h2o2_ml_l=6.0,   # Low
+            target_cond_ml_l=180.0, target_cu_g_l=20.0, target_h2o2_ml_l=7.0,
+            makeup_cond_ml_l=200.0, makeup_cu_g_l=15.0, makeup_h2o2_ml_l=8.0,
+            module7_total_volume=250.0
+        )
+        # The optimizer correctly determines that adding water is not optimal,
+        # as the makeup solution itself helps correct the high Cu concentration.
+        # For this specific case, it also finds that filling the available
+        # space is the best way to minimize the total error.
+        self.assertAlmostEqual(result["add_water"], 0.0, places=2)
+        self.assertAlmostEqual(result["add_makeup"], 50.0, places=2)
 
 if __name__ == '__main__':
     unittest.main()

@@ -111,28 +111,35 @@ def main():
 
     # --- Tab 4: Module 7 Corrector ---
     with tab4:
-        auto_inputs = render_module7_corrector_ui()
-        if auto_inputs.pop("submitted", False):
+        m7_inputs = render_module7_corrector_ui()
+        if m7_inputs.pop("submitted", False):
             initial_values_m7 = {
-                "cond": auto_inputs['current_cond'],
-                "cu": auto_inputs['current_cu'],
-                "h2o2": auto_inputs['current_h2o2']
+                "cond": m7_inputs['current_cond'],
+                "cu": m7_inputs['current_cu'],
+                "h2o2": m7_inputs['current_h2o2']
             }
-            auto_args = {
-                "current_volume": auto_inputs['current_volume'],
+            m7_args = {
+                "current_volume": m7_inputs['current_volume'],
                 "current_cond_ml_l": initial_values_m7['cond'],
                 "current_cu_g_l": initial_values_m7['cu'],
                 "current_h2o2_ml_l": initial_values_m7['h2o2'],
-                "target_cond_ml_l": MODULE7_TARGET_CONDITION_ML_L,
-                "target_cu_g_l": MODULE7_TARGET_CU_ETCH_G_L,
-                "target_h2o2_ml_l": MODULE7_TARGET_H2O2_ML_L,
+                "target_cond_ml_l": m7_inputs['target_cond'],
+                "target_cu_g_l": m7_inputs['target_cu'],
+                "target_h2o2_ml_l": m7_inputs['target_h2o2'],
+                "makeup_cond_ml_l": m7_inputs['makeup_cond'],
+                "makeup_cu_g_l": m7_inputs['makeup_cu'],
+                "makeup_h2o2_ml_l": m7_inputs['makeup_h2o2'],
                 "module7_total_volume": MODULE7_TOTAL_VOLUME
             }
-            auto_correction_result = calculate_module7_correction(**auto_args)
+            m7_correction_result = calculate_module7_correction(**m7_args)
             st.markdown("---")
-            display_module7_correction(auto_correction_result, initial_values_m7)
+            display_module7_correction(
+                m7_correction_result,
+                initial_values_m7,
+                targets=m7_inputs
+            )
 
-    # --- Tab 5: Module 7 Sandbox (CORRECTED LOGIC) ---
+    # --- Tab 5: Module 7 Sandbox ---
     with tab5:
         sandbox_inputs = render_module7_sandbox_ui()
         initial_values_m7_sb = {
@@ -141,22 +148,28 @@ def main():
             "h2o2": sandbox_inputs['start_h2o2']
         }
         
-        # This dictionary's keys now EXACTLY match the arguments of the
-        # simulate_module7_addition_with_makeup function in calculation.py
         sim_args = {
             "current_volume": sandbox_inputs['start_volume'],
             "current_cond_ml_l": initial_values_m7_sb['cond'],
             "current_cu_g_l": initial_values_m7_sb['cu'],
             "current_h2o2_ml_l": initial_values_m7_sb['h2o2'],
-            "makeup_cond_ml_l": MODULE7_TARGET_CONDITION_ML_L,
-            "makeup_cu_g_l": MODULE7_TARGET_CU_ETCH_G_L,
-            "makeup_h2o2_ml_l": MODULE7_TARGET_H2O2_ML_L,
+            "makeup_cond_ml_l": sandbox_inputs['makeup_cond'],
+            "makeup_cu_g_l": sandbox_inputs['makeup_cu'],
+            "makeup_h2o2_ml_l": sandbox_inputs['makeup_h2o2'],
             "water_to_add": sandbox_inputs['water_to_add'],
             "makeup_to_add": sandbox_inputs['makeup_to_add'],
         }
         sim_results = simulate_module7_addition_with_makeup(**sim_args)
         st.markdown("---")
-        display_module7_simulation(sim_results, initial_values_m7_sb)
+        display_module7_simulation(
+            sim_results,
+            initial_values_m7_sb,
+            targets={
+                "cond": sandbox_inputs['target_cond'],
+                "cu": sandbox_inputs['target_cu'],
+                "h2o2": sandbox_inputs['target_h2o2']
+            }
+        )
 
 
 if __name__ == "__main__":
