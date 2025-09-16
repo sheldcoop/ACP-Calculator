@@ -262,3 +262,98 @@ def simulate_module7_addition_with_makeup(
         "new_cu": final_amount_cu / final_volume,
         "new_h2o2": final_amount_h2o2 / final_volume,
     }
+
+
+# =====================================================================================
+# DYNAMIC DISPATCHER
+# =====================================================================================
+
+def dispatch_calculation(module_config: Dict[str, any], inputs: Dict[str, float]) -> Dict[str, Union[float, str]]:
+    """
+    Acts as a bridge between the dynamic UI and the static calculation functions.
+    It uses the module_config to determine which calculation to run and
+    maps the generic inputs to the specific arguments required by that function.
+
+    Args:
+        module_config: The configuration dictionary for the selected module.
+        inputs: A dictionary of all user inputs from the UI.
+
+    Returns:
+        A dictionary containing the results of the calculation.
+    """
+    module_type = module_config.get("module_type")
+    total_volume = module_config.get("total_volume")
+
+    # --- Prepare the arguments for the calculation function ---
+    kwargs = {
+        "current_volume": inputs.get("current_volume"),
+    }
+
+    # Map the dynamic chemical names to the internal function arguments
+    for chemical in module_config.get("chemicals", []):
+        internal_id = chemical.get("internal_id")
+        # e.g., measured_conc_a_ml_l = inputs["current_A"]
+        kwargs[f"measured_conc_{internal_id}_ml_l"] = inputs.get(f"current_{internal_id}")
+        kwargs[f"target_conc_{internal_id}_ml_l"] = inputs.get(f"target_{internal_id}")
+        kwargs[f"makeup_conc_{internal_id}_ml_l"] = inputs.get(f"makeup_{internal_id}")
+
+    # --- Dispatch to the correct calculation engine ---
+
+    if module_type == "2-Component Corrector":
+        # The function expects 'a' and 'b' but kwargs has measured_conc_A_ml_l etc.
+        # We need to remap them one last time.
+        calc_args = {
+            "current_volume": kwargs['current_volume'],
+            "measured_conc_a_ml_l": kwargs.get('measured_conc_A_ml_l'),
+            "measured_conc_b_ml_l": kwargs.get('measured_conc_B_ml_l'),
+            "target_conc_a_ml_l": kwargs.get('target_conc_A_ml_l'),
+            "target_conc_b_ml_l": kwargs.get('target_conc_B_ml_l'),
+            "makeup_conc_a_ml_l": kwargs.get('makeup_conc_A_ml_l'),
+            "makeup_conc_b_ml_l": kwargs.get('makeup_conc_B_ml_l'),
+            "module3_total_volume": total_volume,
+        }
+        result = calculate_module3_correction(**calc_args)
+        # Remap the results back to generic keys
+        return {
+            "status": result.get("status"), "message": result.get("message"),
+            "add_water": result.get("add_water"), "add_makeup": result.get("add_makeup"),
+            "final_volume": result.get("final_volume"),
+            "final_A": result.get("final_conc_a"),
+            "final_B": result.get("final_conc_b"),
+        }
+
+    elif module_type == "3-Component Corrector":
+        # Remap for the 3-component function
+        calc_args = {
+            "current_volume": kwargs['current_volume'],
+            "current_cond_ml_l": kwargs.get('measured_conc_cond_ml_l'),
+            "current_cu_g_l": kwargs.get('measured_conc_cu_ml_l'), # Note the unit mismatch in original func
+            "current_h2o2_ml_l": kwargs.get('measured_conc_h2o2_ml_l'),
+            "target_cond_ml_l": kwargs.get('target_conc_cond_ml_l'),
+            "target_cu_g_l": kwargs.get('target_conc_cu_ml_l'),
+            "target_h2o2_ml_l": kwargs.get('target_conc_h2o2_ml_l'),
+            "makeup_cond_ml_l": kwargs.get('makeup_conc_cond_ml_l'),
+            "makeup_cu_g_l": kwargs.get('makeup_conc_cu_ml_l'),
+            "makeup_h2o2_ml_l": kwargs.get('makeup_conc_h2o2_ml_l'),
+            "module7_total_volume": total_volume,
+        }
+        # There's a slight mismatch in the original function names for cu (g_l vs ml_l).
+        # We need to handle this carefully. Let's assume the UI provides the correct unit
+        # and the calculation function argument name is the source of truth.
+        calc_args['current_cu_g_l'] = inputs.get("current_cu")
+        calc_args['target_cu_g_l'] = inputs.get("target_cu")
+        calc_args['makeup_cu_g_l'] = inputs.get("makeup_cu")
+
+        result = calculate_module7_correction(**calc_args)
+        # Remap results back to generic keys
+        return {
+            "status": result.get("status"), "message": result.get("message"),
+            "add_water": result.get("add_water"), "add_makeup": result.get("add_makeup"),
+            "final_volume": result.get("final_volume"),
+            "final_cond": result.get("final_cond"),
+            "final_cu": result.get("final_cu"),
+            "final_h2o2": result.get("final_h2o2"),
+        }
+
+    else:
+        return {"status": "ERROR", "message": f"Unknown module type: {module_type}"}

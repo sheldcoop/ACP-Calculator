@@ -1,65 +1,78 @@
-# Chemistry Tank Management Application
-
-![Screenshot of the application's UI](placeholder_screenshot.png)
+# Chemistry Tank Management Application (Dynamic Version)
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [Features](#features)
-- [How it Works](#how-it-works)
-  - [Optimal Dilution with Vector Projection](#optimal-dilution-with-vector-projection)
+- [How It Works: Dynamic Configuration](#how-it-works-dynamic-configuration)
+- [First-Time Setup](#first-time-setup)
+- [Day-to-Day Usage](#day-to-day-usage)
 - [Project Structure](#project-structure)
 - [Installation](#installation)
-- [Usage](#usage)
-- [Configuration](#configuration)
+- [Running the Application](#running-the-application)
 - [Running Tests](#running-tests)
 
 ## Overview
 
-The Chemistry Tank Management Application is a web-based tool built with Streamlit, designed to assist lab technicians and chemical engineers in managing the chemical concentrations of various industrial tanks. It provides a suite of calculators and simulators to ensure tanks are maintained at their optimal target concentrations, improving safety, efficiency, and consistency.
+The Chemistry Tank Management Application is a web-based tool built with Streamlit, designed to assist lab technicians and chemical engineers in managing the chemical concentrations of various industrial tanks.
 
-The application is divided into modules for different tanks, each with its own set of specialized tools.
+This version of the application is **fully dynamic**. Instead of hard-coded modules for specific tanks, it allows users to define their own "modules" (e.g., baths, tanks) and the specific chemicals within them. This configuration is saved locally in a `config.json` file, making the application adaptable to any laboratory's unique setup.
 
-## Features
+## How It Works: Dynamic Configuration
 
-The application is organized into a series of tabs, each serving a specific function:
+The application operates in two modes:
 
-*   **Makeup Tank Refill:** Calculates the precise amounts of pure chemicals and water required to refill the main makeup tank to its "golden recipe" concentrations.
-*   **Module 3 Corrector:** Provides a recommended correction for the Module 3 tank. It uses a hierarchical logic to first attempt a "perfect" correction before falling back to a "best effort" scenario.
-*   **Module 3 Sandbox:** An interactive simulator that allows users to see how adding different amounts of water and makeup solution affects the final concentrations in Module 3.
-*   **Module 7 Corrector:** An auto-corrector for the three-component system in Module 7. It automatically decides whether to dilute (add water) or fortify (add pure chemicals) to reach the target concentrations.
-*   **Module 7 Sandbox:** A sandbox environment for Module 7, allowing users to simulate the addition of water, conditioner, copper etch, and H2O2 to see the live impact on the final tank state.
+1.  **Setup Mode (First-Time Use):** If the application is run without a `config.json` file, it automatically enters a guided setup mode. Here, an administrator can define the entire structure of their chemical processes:
+    *   How many modules (baths) they have.
+    *   The names of each module (e.g., "Copper Etch Bath").
+    *   The type of calculation engine each module uses (e.g., a 2-component or 3-component system).
+    *   The specific chemicals in each module, including their names, units, and target concentrations.
 
-## How it Works
+2.  **Application Mode (Day-to-Day Use):** Once the setup is complete and `config.json` is created, the app becomes a day-to-day operational tool. It reads the saved configuration and dynamically builds the user interface. When a user selects a module, the application generates the appropriate input fields and gauges based on the user's custom definitions.
 
-The application uses a set of sophisticated calculation functions to provide accurate recommendations for tank corrections. The core logic is based on a hierarchical approach:
+This approach separates the application's **structure (what it looks like)** from its **core logic (what it calculates)**, providing maximum flexibility.
 
-1.  **Ideal State Check:** The application first checks if the tank is already in its ideal state.
-2.  **Correction Strategy:** If a correction is needed, the application determines the best strategy:
-    *   **Fortification:** If any chemical concentration is below the target, the application will recommend adding a makeup solution or pure chemicals to bring the concentrations up to the target levels.
-    *   **Optimal Dilution:** If all chemical concentrations are above the target, the application will recommend diluting the tank with water.
+## First-Time Setup
 
-### Optimal Dilution with Vector Projection
+On the first run, you will be greeted with the setup page.
 
-When a tank's chemical concentrations are too high, simply diluting with water might not be the most efficient solution. The application uses a technique called **vector projection** to calculate the optimal amount of water to add.
+1.  **Navigate to the Setup Page:** The app will guide you here automatically if `config.json` is missing.
+2.  **Define a Module:**
+    *   Give your module a descriptive name.
+    *   Select the appropriate "Calculation Type" based on the number of chemicals it needs to balance.
+    *   Enter the total volume of the tank or bath.
+3.  **Define Chemicals:**
+    *   For the selected module type, you will see placeholders for each chemical the calculation engine supports (e.g., `A`, `B`).
+    *   Provide a user-friendly **Display Name** (e.g., "Sulfuric Acid"), the **Unit** of measurement (e.g., "ml/L"), and the desired **Target Concentration**.
+4.  **Add More Modules:** Click "Add Another Module" to configure all your tanks.
+5.  **Save:** Once you are finished, click "Save Configuration and Launch App". This will create `config.json` in your project directory.
 
-This method treats the current and target concentrations as vectors in a multi-dimensional space. By projecting the current concentration vector onto the target concentration vector, the application can determine the "sweet spot" for dilution, which brings the concentrations as close as possible to the target ratio, minimizing waste and ensuring a more accurate correction.
+## Day-to-Day Usage
+
+After setup, running the application will take you directly to the main interface.
+
+1.  **Select a Module:** Use the sidebar dropdown to choose the module you want to analyze.
+2.  **Enter Current Values:** The main screen will update to show the input fields for the chemicals you defined for that module. Enter the currently measured values from your bath.
+3.  **Calculate:** Click "Calculate Correction".
+4.  **View Results:** The application will display the recommended action (how much water or makeup solution to add) and a set of gauges showing the predicted final state of the bath after the correction.
 
 ## Project Structure
 
 The project is organized into the following directory structure:
 
 ```
-├── app.py                # Main Streamlit application script
-├── modules/              # Core application logic
-│   ├── __init__.py
-│   ├── calculation.py    # Chemical calculation functions
-│   ├── config.py         # Application configuration and constants
-│   └── ui.py             # Streamlit UI components
-├── requirements.txt      # Project dependencies
-├── tests/                # Unit tests
-│   └── test_calculation.py
-└── README.md             # This file
+├── app.py                     # Main Streamlit application router
+├── config/
+│   └── manager.py             # Handles loading/saving config.json
+├── pages/
+│   └── setup.py               # Renders the first-time setup UI
+├── modules/
+│   ├── calculation.py         # Core chemical calculation functions
+│   └── ui.py                  # Dynamically renders UI components
+├── tests/
+│   ├── test_calculation.py    # Original tests for the core logic
+│   └── test_dynamic_app.py    # Tests for the new dynamic features
+├── requirements.txt           # Project dependencies
+└── README.md                  # This file
 ```
 
 ## Installation
@@ -83,7 +96,7 @@ To run this application locally, you will need Python 3.8+ and `pip`.
     pip install -r requirements.txt
     ```
 
-## Usage
+## Running the Application
 
 Once the dependencies are installed, you can run the Streamlit application with the following command:
 
@@ -91,27 +104,12 @@ Once the dependencies are installed, you can run the Streamlit application with 
 streamlit run app.py
 ```
 
-The application will open in a new tab in your default web browser. You can then navigate through the different tabs to use the calculators and simulators.
-
-## Configuration
-
-The application's default settings can be configured by editing the `modules/config.py` file. This file contains all the default values for tank volumes, target concentrations, and UI titles.
-
-For example, to change the default total volume of the makeup tank, you can modify the `DEFAULT_TANK_VOLUME` variable:
-
-```python
-# modules/config.py
-
-# --- Main Makeup Tank "Golden Recipe" Settings ---
-DEFAULT_TANK_VOLUME: float = 400.0  # Change this value to your desired volume
-DEFAULT_TARGET_A_ML_L: float = 120.0
-DEFAULT_TARGET_B_ML_L: float = 50.0
-```
+The application will open in your default web browser.
 
 ## Running Tests
 
-The project includes a suite of unit tests for the calculation functions. To run the tests, navigate to the root directory of the project and run the following command:
+The project includes a suite of unit tests for both the core calculation logic and the new dynamic features. To run the tests, navigate to the root directory of the project and run the following command:
 
 ```bash
-python -m unittest tests/test_calculation.py
+python -m unittest discover tests
 ```
