@@ -1,12 +1,13 @@
 # =====================================================================================
-# CALCULATION MODULE (DEFINITIVE V3 - WITH OPTIMAL PROJECTION LOGIC)
+# CALCULATION MODULE (DEFINITIVE V4 - WITH "TRUE OPTIMIZATION")
 # =====================================================================================
 # This module contains the final, robust logic for all chemistry calculations.
-# It implements optimal "sweet spot" correction via vector projection for dilution.
+# It implements "True Optimization" for fortification cases using SciPy.
 # =====================================================================================
 
 import math
 from typing import Dict, Union
+from scipy.optimize import minimize
 
 EPSILON = 1e-9
 
@@ -30,25 +31,41 @@ def calculate_refill_recipe(
     return {"add_a": add_a, "add_b": add_b, "add_water": add_water, "error": None}
 
 
-# --- CALCULATOR 2: Module 3 Correction (Definitive Logic) ---
+# --- CALCULATOR 2: Module 3 Correction (With User-Defined Targets) ---
 def calculate_module3_correction(
     current_volume: float, measured_conc_a_ml_l: float, measured_conc_b_ml_l: float,
-    makeup_conc_a_ml_l: float, makeup_conc_b_ml_l: float, module3_total_volume: float
+    target_conc_a_ml_l: float, target_conc_b_ml_l: float,
+    makeup_conc_a_ml_l: float, makeup_conc_b_ml_l: float,
+    module3_total_volume: float
 ) -> Dict[str, Union[float, str]]:
-    """Calculates the most efficient correction for Module 3 using a clear hierarchy."""
-    if (math.isclose(measured_conc_a_ml_l, makeup_conc_a_ml_l) and math.isclose(measured_conc_b_ml_l, makeup_conc_b_ml_l)):
+    """
+    Calculates the most efficient correction for Module 3 using a clear hierarchy.
+    It uses user-defined targets for decision-making and user-defined makeup
+    concentrations for calculations.
+    """
+    # Use target concentrations for the "perfect state" check
+    if (math.isclose(measured_conc_a_ml_l, target_conc_a_ml_l) and
+            math.isclose(measured_conc_b_ml_l, target_conc_b_ml_l)):
         return {"status": "PERFECT", "message": "Concentrations are already at the target values."}
+
     c_curr_a, c_curr_b = measured_conc_a_ml_l, measured_conc_b_ml_l
+    c_target_a, c_target_b = target_conc_a_ml_l, target_conc_b_ml_l
     c_make_a, c_make_b = makeup_conc_a_ml_l, makeup_conc_b_ml_l
+
     available_space = max(0, module3_total_volume - current_volume)
-    is_a_high, is_b_high = c_curr_a > c_make_a, c_curr_b > c_make_b
-    is_any_low = c_curr_a < c_make_a or c_curr_b < c_make_b
+
+    # Decisions (high/low) are based on the TARGET concentrations
+    is_a_high = c_curr_a > c_target_a
+    is_b_high = c_curr_b > c_target_b
+    is_any_low = c_curr_a < c_target_a or c_curr_b < c_target_b
+
     v_water_final, v_makeup_final = 0.0, 0.0
     status = "BEST_POSSIBLE_CORRECTION"
 
     if is_a_high and is_b_high and not is_any_low:
         # Case 1: Both concentrations are high. Use Vector Projection for optimal dilution.
-        dot_product_ts = (c_make_a * c_curr_a) + (c_make_b * c_curr_b)
+        # The projection should aim for the TARGET ratio.
+        dot_product_ts = (c_target_a * c_curr_a) + (c_target_b * c_curr_b)
         dot_product_ss = (c_curr_a**2) + (c_curr_b**2)
         ideal_water = 0.0
         if dot_product_ss > 0:
@@ -60,10 +77,47 @@ def calculate_module3_correction(
         v_makeup_final = 0.0
         status = "OPTIMAL_DILUTION"
     else:
-        # Case 2: Any other situation (all low or mixed). Fortify by topping up with makeup.
-        v_water_final = 0.0
-        v_makeup_final = available_space
-        status = "FORTIFICATION"
+        # Case 2: Any other situation. Use optimization to find the best mix
+        # of water and makeup to add.
+        def objective_function(x):
+            # x[0] = water_to_add, x[1] = makeup_to_add
+            water, makeup = x[0], x[1]
+
+            # Prevent division by zero if no volume
+            final_vol = current_volume + water + makeup
+            if final_vol < EPSILON:
+                return 1e9 # Return a large number if volume is zero
+
+            # Calculate final amounts of each chemical
+            final_a = (current_volume * c_curr_a) + (makeup * c_make_a)
+            final_b = (current_volume * c_curr_b) + (makeup * c_make_b)
+
+            # Calculate final concentrations
+            final_conc_a = final_a / final_vol
+            final_conc_b = final_b / final_vol
+
+            # Return squared error (distance from target)
+            return (final_conc_a - c_target_a)**2 + (final_conc_b - c_target_b)**2
+
+        # Constraints
+        constraints = ({'type': 'ineq', 'fun': lambda x: available_space - x[0] - x[1]})
+
+        # Bounds for variables (water >= 0, makeup >= 0)
+        bounds = [(0, available_space), (0, available_space)]
+
+        # Initial guess (start with simple fortification)
+        initial_guess = [0, available_space]
+
+        # Run the optimization
+        result = minimize(objective_function, initial_guess, bounds=bounds, constraints=constraints)
+
+        if result.success:
+            v_water_final, v_makeup_final = result.x
+            status = "OPTIMAL_FORTIFICATION"
+        else:
+            # Fallback to simple fortification if optimizer fails
+            v_water_final, v_makeup_final = 0.0, available_space
+            status = "FORTIFICATION_FALLBACK"
 
     final_volume = current_volume + v_water_final + v_makeup_final
     final_amount_a = (current_volume * c_curr_a) + (v_makeup_final * c_make_a)
@@ -88,72 +142,114 @@ def simulate_addition(
 
 
 # =====================================================================================
-# MODULE 7 LOGIC (Definitive Versions)
+# MODULE 7 LOGIC (v2 - With True Optimization)
 # =====================================================================================
 
-# --- CALCULATOR 3: Module 7 Correction (Definitive Logic) ---
 def calculate_module7_correction(
-    current_volume: float, current_cond_ml_l: float, current_cu_g_l: float,
-    current_h2o2_ml_l: float, target_cond_ml_l: float, target_cu_g_l: float,
-    target_h2o2_ml_l: float, module7_total_volume: float
+    current_volume: float,
+    current_cond_ml_l: float, current_cu_g_l: float, current_h2o2_ml_l: float,
+    target_cond_ml_l: float, target_cu_g_l: float, target_h2o2_ml_l: float,
+    makeup_cond_ml_l: float, makeup_cu_g_l: float, makeup_h2o2_ml_l: float,
+    module7_total_volume: float
 ) -> Dict[str, Union[float, str]]:
-    """Calculates correction for Module 7. Uses vector projection for dilution, or fortification for all other cases."""
-    c_curr_cond, c_curr_cu, c_curr_h2o2 = current_cond_ml_l, current_cu_g_l, current_h2o2_ml_l
-    c_target_cond, c_target_cu, c_target_h2o2 = target_cond_ml_l, target_cu_g_l, target_h2o2_ml_l
-    is_cond_high, is_cu_high, is_h2o2_high = c_curr_cond > c_target_cond, c_curr_cu > c_target_cu, c_curr_h2o2 > c_target_h2o2
-    is_any_low = c_curr_cond < c_target_cond or c_curr_cu < c_target_cu or c_curr_h2o2 < c_target_h2o2
+    """
+    Calculates the most efficient correction for Module 7 using a makeup solution.
+    """
+    # Check for perfect state
+    if (math.isclose(current_cond_ml_l, target_cond_ml_l) and
+            math.isclose(current_cu_g_l, target_cu_g_l) and
+            math.isclose(current_h2o2_ml_l, target_h2o2_ml_l)):
+        return {"status": "PERFECT", "message": "Concentrations are already at target values."}
+
+    # Assign shorter variable names
+    c_curr = [current_cond_ml_l, current_cu_g_l, current_h2o2_ml_l]
+    c_target = [target_cond_ml_l, target_cu_g_l, target_h2o2_ml_l]
+    c_make = [makeup_cond_ml_l, makeup_cu_g_l, makeup_h2o2_ml_l]
+    
     available_space = max(0, module7_total_volume - current_volume)
-    v_water_final, add_cond_ml, add_cu_g, add_h2o2_ml = 0.0, 0.0, 0.0, 0.0
-    
-    if (is_cond_high or is_cu_high or is_h2o2_high) and not is_any_low:
-        # Case 1: All concentrations are high or okay. Dilute optimally via 3D Vector Projection.
+
+    # Decisions are based on the TARGET concentrations
+    is_all_high = all(c_curr[i] >= c_target[i] for i in range(3)) and any(c_curr[i] > c_target[i] for i in range(3))
+
+    v_water_final, v_makeup_final = 0.0, 0.0
+
+    if is_all_high:
         status = "OPTIMAL_DILUTION"
-        dot_product_ts = (c_target_cond * c_curr_cond) + (c_target_cu * c_curr_cu) + (c_target_h2o2 * c_curr_h2o2)
-        dot_product_ss = (c_curr_cond**2) + (c_curr_cu**2) + (c_curr_h2o2**2)
+        dot_product_ts = sum(c_target[i] * c_curr[i] for i in range(3))
+        dot_product_ss = sum(c_curr[i]**2 for i in range(3))
+
         ideal_water = 0.0
-        if dot_product_ss > 0:
+        if dot_product_ss > EPSILON:
             scalar = dot_product_ts / dot_product_ss
-            optimal_conc_cond = c_curr_cond * scalar
-            if optimal_conc_cond > 0 and c_curr_cond > optimal_conc_cond:
-                ideal_water = current_volume * (c_curr_cond / optimal_conc_cond - 1)
+            # Check if dilution is actually needed and possible
+            if scalar < 1:
+                # Find which component determines the dilution factor
+                dilution_ratio = float('inf')
+                for i in range(3):
+                    if c_curr[i] > c_target[i] and c_target[i] > 0:
+                        dilution_ratio = min(dilution_ratio, c_curr[i] / c_target[i])
+
+                if dilution_ratio != float('inf'):
+                    ideal_water = current_volume * (dilution_ratio - 1)
+
         v_water_final = min(ideal_water, available_space)
+        v_makeup_final = 0.0
     else:
-        # Case 2: Any other situation (all low, or mixed high/low). Fortify to reach targets.
-        status = "FORTIFICATION"
-        add_cond_ml = max(0, (c_target_cond * module7_total_volume) - (c_curr_cond * current_volume))
-        add_cu_g = max(0, (c_target_cu * module7_total_volume) - (c_curr_cu * current_volume))
-        add_h2o2_ml = max(0, (c_target_h2o2 * module7_total_volume) - (c_curr_h2o2 * current_volume))
-        volume_increase_L = (add_cond_ml + add_h2o2_ml) / 1000.0
-        if volume_increase_L > available_space:
-            status = "ERROR"
-            return {"status": status, "message": f"Fortification requires adding {volume_increase_L:.2f} L of liquid, exceeding available space."}
-        v_water_final = available_space - volume_increase_L
-    
-    final_volume = current_volume + v_water_final + (add_cond_ml + add_h2o2_ml) / 1000.0
-    final_amount_cond = (current_volume * c_curr_cond) + add_cond_ml
-    final_amount_cu = (current_volume * c_curr_cu) + add_cu_g
-    final_amount_h2o2 = (current_volume * c_curr_h2o2) + add_h2o2_ml
-    
+        # Fortification case using SciPy optimizer
+        def objective_function(x):
+            water, makeup = x[0], x[1]
+            final_vol = current_volume + water + makeup
+            if final_vol < EPSILON: return 1e9
+
+            final_concs = [
+                ((current_volume * c_curr[i]) + (makeup * c_make[i])) / final_vol
+                for i in range(3)
+            ]
+
+            return sum((final_concs[i] - c_target[i])**2 for i in range(3))
+
+        constraints = ({'type': 'ineq', 'fun': lambda x: available_space - x[0] - x[1]})
+        bounds = [(0, available_space), (0, available_space)]
+        initial_guess = [0, available_space]
+
+        result = minimize(objective_function, initial_guess, bounds=bounds, constraints=constraints)
+
+        if result.success:
+            v_water_final, v_makeup_final = result.x
+            status = "OPTIMAL_FORTIFICATION"
+        else:
+            v_water_final, v_makeup_final = 0.0, available_space
+            status = "FORTIFICATION_FALLBACK"
+
+    # Calculate final state
+    final_volume = current_volume + v_water_final + v_makeup_final
+    final_amounts = [
+        (current_volume * c_curr[i]) + (v_makeup_final * c_make[i]) for i in range(3)
+    ]
+    final_concs = [amt / final_volume if final_volume > EPSILON else 0 for amt in final_amounts]
+
     return {
-        "status": status, "add_water": v_water_final, "add_cond": add_cond_ml, "add_cu": add_cu_g, "add_h2o2": add_h2o2_ml,
-        "final_volume": final_volume, "final_cond": final_amount_cond / final_volume if final_volume > 0 else 0,
-        "final_cu": final_amount_cu / final_volume if final_volume > 0 else 0,
-        "final_h2o2": final_amount_h2o2 / final_volume if final_volume > 0 else 0
+        "status": status, "add_water": v_water_final, "add_makeup": v_makeup_final,
+        "final_volume": final_volume,
+        "final_cond": final_concs[0], "final_cu": final_concs[1], "final_h2o2": final_concs[2]
     }
 
 
-# --- SIMULATOR: Module 7 Sandbox (Corrected Volume Logic) ---
-def simulate_module7_addition(
+# --- SIMULATOR: Module 7 Sandbox (with Makeup Solution) ---
+def simulate_module7_addition_with_makeup(
     current_volume: float, current_cond_ml_l: float, current_cu_g_l: float,
-    current_h2o2_ml_l: float, add_water_L: float, add_cond_ml: float,
-    add_cu_g: float, add_h2o2_ml: float
+    current_h2o2_ml_l: float, makeup_cond_ml_l: float, makeup_cu_g_l: float,
+    makeup_h2o2_ml_l: float, water_to_add: float, makeup_to_add: float
 ) -> Dict[str, float]:
-    """Simulates the result of adding specific pure components to the Module 7 tank."""
-    final_volume = current_volume + add_water_L + (add_cond_ml / 1000.0) + (add_h2o2_ml / 1000.0)
-    if final_volume < EPSILON: return {"new_volume": 0, "new_cond": 0, "new_cu": 0, "new_h2o2": 0}
-    final_amount_cond = (current_volume * current_cond_ml_l) + add_cond_ml
-    final_amount_cu = (current_volume * current_cu_g_l) + add_cu_g
-    final_amount_h2o2 = (current_volume * current_h2o2_ml_l) + add_h2o2_ml
+    """Simulates the result of adding water and makeup solution to the Module 7 tank."""
+    final_volume = current_volume + water_to_add + makeup_to_add
+    if final_volume < EPSILON:
+        return {"new_volume": 0, "new_cond": 0, "new_cu": 0, "new_h2o2": 0}
+
+    final_amount_cond = (current_volume * current_cond_ml_l) + (makeup_to_add * makeup_cond_ml_l)
+    final_amount_cu = (current_volume * current_cu_g_l) + (makeup_to_add * makeup_cu_g_l)
+    final_amount_h2o2 = (current_volume * current_h2o2_ml_l) + (makeup_to_add * makeup_h2o2_ml_l)
+
     return {
         "new_volume": final_volume,
         "new_cond": final_amount_cond / final_volume,
