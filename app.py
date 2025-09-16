@@ -1,8 +1,8 @@
 # =====================================================================================
-# MAIN APPLICATION SCRIPT (DEFINITIVE VERSION)
+# MAIN APPLICATION SCRIPT (REFACTORED FOR STATEFULNESS)
 # =====================================================================================
 # This script ties together the UI, configuration, and calculation logic.
-# It contains the final, corrected logic for all five tabs.
+# It uses st.session_state to create a robust, stateful user experience.
 # =====================================================================================
 
 import streamlit as st
@@ -11,9 +11,9 @@ import streamlit as st
 from modules.config import (
     APP_TITLE, TAB1_TITLE,
     MODULE3_TOTAL_VOLUME,
-    MODULE7_TOTAL_VOLUME, MODULE7_TARGET_CONDITION_ML_L,
-    MODULE7_TARGET_CU_ETCH_G_L, MODULE7_TARGET_H2O2_ML_L,
-    DEFAULT_TARGET_A_ML_L, DEFAULT_TARGET_B_ML_L
+    MODULE7_TOTAL_VOLUME,
+    DEFAULT_TARGET_A_ML_L, DEFAULT_TARGET_B_ML_L,
+    MODULE7_TARGET_CONDITION_ML_L, MODULE7_TARGET_CU_ETCH_G_L, MODULE7_TARGET_H2O2_ML_L
 )
 from modules.ui import (
     render_makeup_tank_ui,
@@ -30,9 +30,7 @@ from modules.ui import (
 from modules.calculation import (
     calculate_refill_recipe,
     calculate_module3_correction,
-    simulate_addition,
     calculate_module7_correction,
-    simulate_module7_addition_with_makeup,
 )
 
 def main():
@@ -40,6 +38,23 @@ def main():
     Main function to configure and run the Streamlit application.
     """
     st.set_page_config(page_title=APP_TITLE, layout="wide")
+
+    # Initialize a single dictionary for the app's state
+    if "app_state" not in st.session_state:
+        st.session_state.app_state = {
+            # State for Module 3 Corrector
+            "m3_inputs": {}, "m3_result": None, "m3_initial_values": {},
+            # State for Module 3 Sandbox
+            "m3_sim_results": None, "m3_sim_initial_values": {},
+            # State for Module 7 Corrector
+            "m7_inputs": {}, "m7_result": None, "m7_initial_values": {},
+            # State for Module 7 Sandbox
+            "m7_sim_results": None, "m7_sim_initial_values": {},
+        }
+
+    # Create a shorter alias for convenience
+    state = st.session_state.app_state
+
     st.title(APP_TITLE)
     st.markdown("---")
 
@@ -51,127 +66,83 @@ def main():
         "Module 7 Sandbox",
     ])
 
-    # --- Tab 1: Makeup Tank Refill ---
+    # --- Tab 1: Makeup Tank Refill (Stateless for now, but uses session_state for inputs) ---
     with tab1:
-        makeup_inputs = render_makeup_tank_ui()
+        render_makeup_tank_ui()
+        # Collect inputs from st.session_state, which holds the widget values by key
+        makeup_inputs = {
+            "total_volume": st.session_state.m_up_input_total_vol,
+            "current_volume": st.session_state.m_up_input_curr_vol,
+            "current_conc_a_ml_l": st.session_state.m_up_input_curr_a,
+            "current_conc_b_ml_l": st.session_state.m_up_input_curr_b,
+            "target_conc_a_ml_l": st.session_state.m_up_input_target_a,
+            "target_conc_b_ml_l": st.session_state.m_up_input_target_b,
+        }
         makeup_recipe = calculate_refill_recipe(**makeup_inputs)
         st.markdown("---")
         display_makeup_recipe(makeup_recipe)
 
     # --- Tab 2: Module 3 Corrector ---
     with tab2:
-        module3_inputs = render_module3_ui()
-        if module3_inputs.pop("submitted", False):
-            initial_values_m3 = {
-                "conc_a": module3_inputs['measured_conc_a'],
-                "conc_b": module3_inputs['measured_conc_b']
-            }
-            correction_result = calculate_module3_correction(
-                current_volume=module3_inputs['current_volume'],
-                measured_conc_a_ml_l=initial_values_m3['conc_a'],
-                measured_conc_b_ml_l=initial_values_m3['conc_b'],
-                target_conc_a_ml_l=module3_inputs['target_conc_a'],
-                target_conc_b_ml_l=module3_inputs['target_conc_b'],
-                makeup_conc_a_ml_l=module3_inputs['makeup_conc_a'],
-                makeup_conc_b_ml_l=module3_inputs['makeup_conc_b'],
-                module3_total_volume=MODULE3_TOTAL_VOLUME
-            )
+        render_module3_ui()
+
+        # Logic is now state-driven. We calculate only if inputs are new.
+        if state['m3_inputs'] and state['m3_result'] is None:
+            state['m3_result'] = calculate_module3_correction(**state['m3_inputs'])
+
+        # Display the result if it exists
+        if state['m3_result']:
             st.markdown("---")
             display_module3_correction(
-                correction_result,
-                initial_values_m3,
-                target_conc_a=module3_inputs['target_conc_a'],
-                target_conc_b=module3_inputs['target_conc_b']
+                state['m3_result'],
+                state['m3_initial_values'],
+                target_conc_a=state['m3_inputs']['target_conc_a_ml_l'],
+                target_conc_b=state['m3_inputs']['target_conc_b_ml_l']
             )
 
     # --- Tab 3: Module 3 Sandbox ---
     with tab3:
-        sandbox_inputs = render_sandbox_ui()
-        initial_values_m3_sb = {
-            "conc_a": sandbox_inputs["start_conc_a"],
-            "conc_b": sandbox_inputs["start_conc_b"]
-        }
-        sim_args = {
-            "current_volume": sandbox_inputs["start_volume"],
-            "current_conc_a_ml_l": initial_values_m3_sb["conc_a"],
-            "current_conc_b_ml_l": initial_values_m3_sb["conc_b"],
-            "water_to_add": sandbox_inputs["water_to_add"],
-            "makeup_to_add": sandbox_inputs["makeup_to_add"],
-            "makeup_conc_a_ml_l": sandbox_inputs['makeup_conc_a'],
-            "makeup_conc_b_ml_l": sandbox_inputs['makeup_conc_b']
-        }
-        simulation_results = simulate_addition(**sim_args)
+        render_sandbox_ui() # This function now handles its own simulation via callbacks
         st.markdown("---")
+        # The display function reads directly from the state updated by the callback
         display_simulation_results(
-            simulation_results,
-            initial_values_m3_sb,
-            target_conc_a=sandbox_inputs['target_conc_a'],
-            target_conc_b=sandbox_inputs['target_conc_b']
+            state['m3_sim_results'],
+            state['m3_sim_initial_values'],
+            target_conc_a=st.session_state.mod3_sand_target_a,
+            target_conc_b=st.session_state.mod3_sand_target_b
         )
 
     # --- Tab 4: Module 7 Corrector ---
     with tab4:
-        m7_inputs = render_module7_corrector_ui()
-        if m7_inputs.pop("submitted", False):
-            initial_values_m7 = {
-                "cond": m7_inputs['current_cond'],
-                "cu": m7_inputs['current_cu'],
-                "h2o2": m7_inputs['current_h2o2']
-            }
-            m7_args = {
-                "current_volume": m7_inputs['current_volume'],
-                "current_cond_ml_l": initial_values_m7['cond'],
-                "current_cu_g_l": initial_values_m7['cu'],
-                "current_h2o2_ml_l": initial_values_m7['h2o2'],
-                "target_cond_ml_l": m7_inputs['target_cond'],
-                "target_cu_g_l": m7_inputs['target_cu'],
-                "target_h2o2_ml_l": m7_inputs['target_h2o2'],
-                "makeup_cond_ml_l": m7_inputs['makeup_cond'],
-                "makeup_cu_g_l": m7_inputs['makeup_cu'],
-                "makeup_h2o2_ml_l": m7_inputs['makeup_h2o2'],
-                "module7_total_volume": MODULE7_TOTAL_VOLUME
-            }
-            m7_correction_result = calculate_module7_correction(**m7_args)
+        render_module7_corrector_ui()
+
+        # Logic is state-driven, same as Module 3
+        if state['m7_inputs'] and state['m7_result'] is None:
+            state['m7_result'] = calculate_module7_correction(**state['m7_inputs'])
+
+        if state['m7_result']:
             st.markdown("---")
             display_module7_correction(
-                m7_correction_result,
-                initial_values_m7,
+                state['m7_result'],
+                state['m7_initial_values'],
                 targets={
-                    "cond": m7_inputs['target_cond'],
-                    "cu": m7_inputs['target_cu'],
-                    "h2o2": m7_inputs['target_h2o2']
+                    "cond": state['m7_inputs']['target_cond_ml_l'],
+                    "cu": state['m7_inputs']['target_cu_g_l'],
+                    "h2o2": state['m7_inputs']['target_h2o2_ml_l']
                 }
             )
 
     # --- Tab 5: Module 7 Sandbox ---
     with tab5:
-        sandbox_inputs = render_module7_sandbox_ui()
-        initial_values_m7_sb = {
-            "cond": sandbox_inputs['start_cond'],
-            "cu": sandbox_inputs['start_cu'],
-            "h2o2": sandbox_inputs['start_h2o2']
-        }
-        
-        sim_args = {
-            "current_volume": sandbox_inputs['start_volume'],
-            "current_cond_ml_l": initial_values_m7_sb['cond'],
-            "current_cu_g_l": initial_values_m7_sb['cu'],
-            "current_h2o2_ml_l": initial_values_m7_sb['h2o2'],
-            "makeup_cond_ml_l": sandbox_inputs['makeup_cond'],
-            "makeup_cu_g_l": sandbox_inputs['makeup_cu'],
-            "makeup_h2o2_ml_l": sandbox_inputs['makeup_h2o2'],
-            "water_to_add": sandbox_inputs['water_to_add'],
-            "makeup_to_add": sandbox_inputs['makeup_to_add'],
-        }
-        sim_results = simulate_module7_addition_with_makeup(**sim_args)
+        render_module7_sandbox_ui() # Handles its own simulation via callbacks
         st.markdown("---")
         display_module7_simulation(
-            sim_results,
-            initial_values_m7_sb,
+            state['m7_sim_results'],
+            state['m7_sim_initial_values'],
             targets={
-                "cond": sandbox_inputs['target_cond'],
-                "cu": sandbox_inputs['target_cu'],
-                "h2o2": sandbox_inputs['target_h2o2']
+                "cond": st.session_state.m7_sand_target_cond,
+                "cu": st.session_state.m7_sand_target_cu,
+                "h2o2": st.session_state.m7_sand_target_h2o2
             }
         )
 

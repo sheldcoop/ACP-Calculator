@@ -6,12 +6,14 @@
 # =====================================================================================
 
 import math
+import streamlit as st
 from typing import Dict, Union
 from scipy.optimize import minimize
 
 EPSILON = 1e-9
 
 # --- CALCULATOR 1: Main Makeup Tank Refill (Unchanged) ---
+@st.cache_data
 def calculate_refill_recipe(
     total_volume: float, current_volume: float, current_conc_a_ml_l: float,
     current_conc_b_ml_l: float, target_conc_a_ml_l: float, target_conc_b_ml_l: float
@@ -32,6 +34,7 @@ def calculate_refill_recipe(
 
 
 # --- CALCULATOR 2: Module 3 Correction (With User-Defined Targets) ---
+@st.cache_data
 def calculate_module3_correction(
     current_volume: float, measured_conc_a_ml_l: float, measured_conc_b_ml_l: float,
     target_conc_a_ml_l: float, target_conc_b_ml_l: float,
@@ -128,6 +131,7 @@ def calculate_module3_correction(
 
 
 # --- SIMULATOR: Module 3 Sandbox (Unchanged) ---
+@st.cache_data
 def simulate_addition(
     current_volume: float, current_conc_a_ml_l: float, current_conc_b_ml_l: float,
     makeup_conc_a_ml_l: float, makeup_conc_b_ml_l: float,
@@ -145,6 +149,7 @@ def simulate_addition(
 # MODULE 7 LOGIC (v2 - With True Optimization)
 # =====================================================================================
 
+@st.cache_data
 def calculate_module7_correction(
     current_volume: float,
     current_cond_ml_l: float, current_cu_g_l: float, current_h2o2_ml_l: float,
@@ -236,6 +241,7 @@ def calculate_module7_correction(
 
 
 # --- SIMULATOR: Module 7 Sandbox (with Makeup Solution) ---
+@st.cache_data
 def simulate_module7_addition_with_makeup(
     current_volume: float, current_cond_ml_l: float, current_cu_g_l: float,
     current_h2o2_ml_l: float, makeup_cond_ml_l: float, makeup_cu_g_l: float,
