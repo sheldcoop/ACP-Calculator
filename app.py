@@ -52,6 +52,7 @@ def run_main_app(app_config: list):
         st.session_state.main_app_state = {
             "selected_module_name": app_config[0]["name"],
             "module_results": {}, # To store calculation results for each module
+            "module_input_states": {}, # Parent dict for all module inputs
         }
 
     app_state = st.session_state.main_app_state

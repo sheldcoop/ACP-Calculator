@@ -77,11 +77,15 @@ def render_dynamic_module_ui(module_config: Dict[str, Any]):
         module_config: The dictionary configuration for a single module.
     """
 
-    # Store inputs in a dedicated session state dictionary to avoid key collisions
-    if 'dynamic_inputs' not in st.session_state:
-        st.session_state.dynamic_inputs = {}
+    module_name = module_config["name"]
+    input_states = st.session_state.main_app_state["module_input_states"]
 
-    inputs = st.session_state.dynamic_inputs
+    # Initialize the input state for this module if it doesn't exist
+    if module_name not in input_states:
+        input_states[module_name] = {}
+
+    # Use the specific input state for this module
+    inputs = input_states[module_name]
 
     with st.form(key=f"form_{module_config['name']}"):
         with st.expander("Current Bath Status", expanded=True):
@@ -221,7 +225,17 @@ def render_config_editor(config_in_progress: List[Dict[str, Any]]):
                     st.rerun()
 
         with st.expander("Module Settings", expanded=True):
-            module['name'] = st.text_input("Module Name", value=module.get('name', ''), key=f"mod_name_{i}")
+            # Handle name change to keep session state consistent
+            original_name = module.get('name', '')
+            new_name = st.text_input("Module Name", value=original_name, key=f"mod_name_{i}")
+            if new_name != original_name:
+                # If this was the currently selected module, update the selection
+                if st.session_state.main_app_state["selected_module_name"] == original_name:
+                    st.session_state.main_app_state["selected_module_name"] = new_name
+                module['name'] = new_name
+                st.rerun() # Rerun to update the header and other UI elements
+            else:
+                module['name'] = new_name
             module['module_type'] = st.selectbox(
                 "Select Calculation Type",
                 options=list(module_types.keys()),
@@ -294,11 +308,17 @@ def render_dynamic_sandbox_ui(module_config: Dict[str, Any]):
     """
     st.header("Simulation Starting Point")
 
-    # Use a unique key for the sandbox inputs to avoid conflicts
-    if 'sandbox_inputs' not in st.session_state:
-        st.session_state.sandbox_inputs = {}
+    module_name = module_config["name"]
+    # Use a different key in session_state to avoid conflicts with the corrector inputs
+    if 'sandbox_input_states' not in st.session_state.main_app_state:
+        st.session_state.main_app_state['sandbox_input_states'] = {}
 
-    sim_inputs = st.session_state.sandbox_inputs
+    sandbox_states = st.session_state.main_app_state['sandbox_input_states']
+
+    if module_name not in sandbox_states:
+        sandbox_states[module_name] = {}
+
+    sim_inputs = sandbox_states[module_name]
 
     cols = st.columns(len(module_config['chemicals']) + 1)
     with cols[0]:
