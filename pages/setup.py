@@ -49,7 +49,7 @@ def render_setup_page():
 
     # --- Save Button ---
     st.markdown("---")
-    if st.button("💾 Save Configuration and Launch App", type="primary"):
+    if st.button("💾 Save Configuration", type="primary"):
         # Final validation before saving
         is_valid = True
         for module in config_in_progress:
@@ -64,19 +64,9 @@ def render_setup_page():
 
         if is_valid:
             save_config(config_in_progress)
-            st.session_state.setup_complete = True
+            # Use session state to show a success message and then trigger a reload
+            st.session_state.setup_just_completed = True
             st.rerun()
-
-# --- Post-Save Display ---
-if st.session_state.get("setup_complete", False):
-    st.success("Configuration saved successfully!")
-
-    if st.button("🚀 Launch Tank Manager"):
-        # Clear the setup state before switching pages
-        del st.session_state.setup_complete
-        if 'setup_config' in st.session_state:
-            del st.session_state.setup_config
-        st.switch_page("pages/1_Tank_Manager.py")
 
 if __name__ == "__main__":
     render_setup_page()
