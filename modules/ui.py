@@ -224,27 +224,30 @@ def render_config_editor(config_in_progress: List[Dict[str, Any]]):
                     config_in_progress.insert(i + 1, config_in_progress.pop(i))
                     st.rerun()
 
-        with st.expander("Module Settings", expanded=True):
-            # Handle name change to keep session state consistent
-            original_name = module.get('name', '')
-            new_name = st.text_input("Module Name", value=original_name, key=f"mod_name_{i}")
-            if new_name != original_name:
-                # If this was the currently selected module, update the selection
-                if st.session_state.main_app_state["selected_module_name"] == original_name:
-                    st.session_state.main_app_state["selected_module_name"] = new_name
-                module['name'] = new_name
-                st.rerun() # Rerun to update the header and other UI elements
-            else:
-                module['name'] = new_name
-            module['module_type'] = st.selectbox(
-                "Select Calculation Type",
-                options=list(module_types.keys()),
-                index=list(module_types.keys()).index(module.get('module_type', list(module_types.keys())[0])),
-                key=f"mod_type_{i}"
-            )
-            module['total_volume'] = st.number_input("Total Module Volume (L)", min_value=0.1, value=module.get('total_volume', 250.0), key=f"mod_vol_{i}")
+        with st.container(border=True):
+            # --- Module Settings in Columns ---
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                original_name = module.get('name', '')
+                new_name = st.text_input("Module Name", value=original_name, key=f"mod_name_{i}")
+                if new_name != original_name:
+                    if st.session_state.main_app_state["selected_module_name"] == original_name:
+                        st.session_state.main_app_state["selected_module_name"] = new_name
+                    module['name'] = new_name
+                    st.rerun()
+                else:
+                    module['name'] = new_name
+            with c2:
+                module['module_type'] = st.selectbox(
+                    "Calculation Type",
+                    options=list(module_types.keys()),
+                    index=list(module_types.keys()).index(module.get('module_type', list(module_types.keys())[0])),
+                    key=f"mod_type_{i}"
+                )
+            with c3:
+                module['total_volume'] = st.number_input("Total Volume (L)", min_value=0.1, value=module.get('total_volume', 250.0), key=f"mod_vol_{i}")
 
-            st.subheader("Chemicals in this Module")
+            st.subheader("🧪 Chemicals in this Module")
 
             required_chemicals = module_types[module['module_type']]
 

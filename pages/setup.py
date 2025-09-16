@@ -19,11 +19,14 @@ def render_setup_page():
     """
     Renders the UI for the initial application setup.
     """
-    st.set_page_config(page_title="Initial Setup", layout="centered")
-    st.title("Welcome! Let's Set Up Your Application.")
+    st.set_page_config(page_title="Initial Setup - Chemistry ACP", layout="wide")
+
+    st.title("🔬 Welcome to the Chemistry ACP-Calculator Setup")
     st.markdown("""
-        Since this is your first time running the application, you need to configure your
-        chemistry modules (e.g., tanks, baths). Please define each module below.
+    **First-time setup required.**
+
+    Before you can start calculating corrections, you need to define the structure of your chemical modules (e.g., tanks, baths).
+    Please configure each module you wish to manage with the application below. You can add, remove, and reorder modules as needed.
     """)
 
     # Initialize the state for storing the configuration in progress
