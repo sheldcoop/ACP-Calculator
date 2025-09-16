@@ -70,12 +70,19 @@ def main():
                 current_volume=module3_inputs['current_volume'],
                 measured_conc_a_ml_l=initial_values_m3['conc_a'],
                 measured_conc_b_ml_l=initial_values_m3['conc_b'],
-                makeup_conc_a_ml_l=DEFAULT_TARGET_A_ML_L,
-                makeup_conc_b_ml_l=DEFAULT_TARGET_B_ML_L,
+                target_conc_a_ml_l=module3_inputs['target_conc_a'],
+                target_conc_b_ml_l=module3_inputs['target_conc_b'],
+                makeup_conc_a_ml_l=module3_inputs['makeup_conc_a'],
+                makeup_conc_b_ml_l=module3_inputs['makeup_conc_b'],
                 module3_total_volume=MODULE3_TOTAL_VOLUME
             )
             st.markdown("---")
-            display_module3_correction(correction_result, initial_values_m3)
+            display_module3_correction(
+                correction_result,
+                initial_values_m3,
+                target_conc_a=module3_inputs['target_conc_a'],
+                target_conc_b=module3_inputs['target_conc_b']
+            )
 
     # --- Tab 3: Module 3 Sandbox ---
     with tab3:
@@ -90,12 +97,17 @@ def main():
             "current_conc_b_ml_l": initial_values_m3_sb["conc_b"],
             "water_to_add": sandbox_inputs["water_to_add"],
             "makeup_to_add": sandbox_inputs["makeup_to_add"],
-            "makeup_conc_a_ml_l": DEFAULT_TARGET_A_ML_L,
-            "makeup_conc_b_ml_l": DEFAULT_TARGET_B_ML_L
+            "makeup_conc_a_ml_l": sandbox_inputs['makeup_conc_a'],
+            "makeup_conc_b_ml_l": sandbox_inputs['makeup_conc_b']
         }
         simulation_results = simulate_addition(**sim_args)
         st.markdown("---")
-        display_simulation_results(simulation_results, initial_values_m3_sb)
+        display_simulation_results(
+            simulation_results,
+            initial_values_m3_sb,
+            target_conc_a=sandbox_inputs['target_conc_a'],
+            target_conc_b=sandbox_inputs['target_conc_b']
+        )
 
     # --- Tab 4: Module 7 Corrector ---
     with tab4:

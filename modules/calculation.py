@@ -30,25 +30,41 @@ def calculate_refill_recipe(
     return {"add_a": add_a, "add_b": add_b, "add_water": add_water, "error": None}
 
 
-# --- CALCULATOR 2: Module 3 Correction (Definitive Logic) ---
+# --- CALCULATOR 2: Module 3 Correction (With User-Defined Targets) ---
 def calculate_module3_correction(
     current_volume: float, measured_conc_a_ml_l: float, measured_conc_b_ml_l: float,
-    makeup_conc_a_ml_l: float, makeup_conc_b_ml_l: float, module3_total_volume: float
+    target_conc_a_ml_l: float, target_conc_b_ml_l: float,
+    makeup_conc_a_ml_l: float, makeup_conc_b_ml_l: float,
+    module3_total_volume: float
 ) -> Dict[str, Union[float, str]]:
-    """Calculates the most efficient correction for Module 3 using a clear hierarchy."""
-    if (math.isclose(measured_conc_a_ml_l, makeup_conc_a_ml_l) and math.isclose(measured_conc_b_ml_l, makeup_conc_b_ml_l)):
+    """
+    Calculates the most efficient correction for Module 3 using a clear hierarchy.
+    It uses user-defined targets for decision-making and user-defined makeup
+    concentrations for calculations.
+    """
+    # Use target concentrations for the "perfect state" check
+    if (math.isclose(measured_conc_a_ml_l, target_conc_a_ml_l) and
+            math.isclose(measured_conc_b_ml_l, target_conc_b_ml_l)):
         return {"status": "PERFECT", "message": "Concentrations are already at the target values."}
+
     c_curr_a, c_curr_b = measured_conc_a_ml_l, measured_conc_b_ml_l
+    c_target_a, c_target_b = target_conc_a_ml_l, target_conc_b_ml_l
     c_make_a, c_make_b = makeup_conc_a_ml_l, makeup_conc_b_ml_l
+
     available_space = max(0, module3_total_volume - current_volume)
-    is_a_high, is_b_high = c_curr_a > c_make_a, c_curr_b > c_make_b
-    is_any_low = c_curr_a < c_make_a or c_curr_b < c_make_b
+
+    # Decisions (high/low) are based on the TARGET concentrations
+    is_a_high = c_curr_a > c_target_a
+    is_b_high = c_curr_b > c_target_b
+    is_any_low = c_curr_a < c_target_a or c_curr_b < c_target_b
+
     v_water_final, v_makeup_final = 0.0, 0.0
     status = "BEST_POSSIBLE_CORRECTION"
 
     if is_a_high and is_b_high and not is_any_low:
         # Case 1: Both concentrations are high. Use Vector Projection for optimal dilution.
-        dot_product_ts = (c_make_a * c_curr_a) + (c_make_b * c_curr_b)
+        # The projection should aim for the TARGET ratio.
+        dot_product_ts = (c_target_a * c_curr_a) + (c_target_b * c_curr_b)
         dot_product_ss = (c_curr_a**2) + (c_curr_b**2)
         ideal_water = 0.0
         if dot_product_ss > 0:

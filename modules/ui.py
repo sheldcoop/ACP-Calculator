@@ -127,18 +127,27 @@ def display_makeup_recipe(recipe: Dict[str, Any]):
 
 def render_module3_ui() -> Dict[str, Any]:
     """Renders the UI components for the Module 3 Corrector."""
-    st.header("1. Module 3 Current Status")
+    st.header("1. Current Status")
     user_inputs = {}
     with st.form(key="mod3_corr_form"):
         col1, col2, col3 = st.columns(3)
-        user_inputs['current_volume'] = col1.number_input("Current Volume in Module 3 (L)", min_value=0.0, max_value=MODULE3_TOTAL_VOLUME, value=180.0, step=10.0, key="mod3_corr_input_vol")
-        user_inputs['measured_conc_a'] = col2.number_input("Measured Conc. of A (ml/L)", min_value=0.0, value=150.0, step=1.0, format="%.1f", key="mod3_corr_input_a")
-        user_inputs['measured_conc_b'] = col3.number_input("Measured Conc. of B (ml/L)", min_value=0.0, value=45.0, step=1.0, format="%.1f", key="mod3_corr_input_b")
-        st.info(f"Target concentrations are **{DEFAULT_TARGET_A_ML_L} ml/L** for A and **{DEFAULT_TARGET_B_ML_L} ml/L** for B.")
+        user_inputs['current_volume'] = col1.number_input("Current Volume (L)", min_value=0.0, max_value=MODULE3_TOTAL_VOLUME, value=180.0, step=10.0, key="mod3_corr_input_vol")
+        user_inputs['measured_conc_a'] = col2.number_input("Measured Conc. A (ml/L)", min_value=0.0, value=150.0, step=1.0, format="%.1f", key="mod3_corr_input_a")
+        user_inputs['measured_conc_b'] = col3.number_input("Measured Conc. B (ml/L)", min_value=0.0, value=45.0, step=1.0, format="%.1f", key="mod3_corr_input_b")
+
+        st.header("2. Define Correction Parameters")
+        col1, col2 = st.columns(2)
+        user_inputs['target_conc_a'] = col1.number_input("Target Conc. A (ml/L)", min_value=0.0, value=DEFAULT_TARGET_A_ML_L, step=1.0, key="mod3_corr_target_a")
+        user_inputs['target_conc_b'] = col2.number_input("Target Conc. B (ml/L)", min_value=0.0, value=DEFAULT_TARGET_B_ML_L, step=1.0, key="mod3_corr_target_b")
+
+        col1, col2 = st.columns(2)
+        user_inputs['makeup_conc_a'] = col1.number_input("Makeup Conc. A (ml/L)", min_value=0.0, value=DEFAULT_TARGET_A_ML_L, step=1.0, key="mod3_corr_makeup_a")
+        user_inputs['makeup_conc_b'] = col2.number_input("Makeup Conc. B (ml/L)", min_value=0.0, value=DEFAULT_TARGET_B_ML_L, step=1.0, key="mod3_corr_makeup_b")
+
         user_inputs['submitted'] = st.form_submit_button("Calculate Correction")
     return user_inputs
 
-def display_module3_correction(result: Dict[str, Any], initial_values: Dict[str, float]):
+def display_module3_correction(result: Dict[str, Any], initial_values: Dict[str, float], target_conc_a: float, target_conc_b: float):
     """Displays the calculated correction recipe for Module 3."""
     with st.expander("View Correction and Final State", expanded=True):
         st.header("2. Recommended Correction")
@@ -172,13 +181,13 @@ def display_module3_correction(result: Dict[str, Any], initial_values: Dict[str,
         col1, col2 = st.columns(2)
         with col1:
             display_gauge(
-                label="Concentration A", value=final_conc_a, target=DEFAULT_TARGET_A_ML_L,
+                label="Concentration A", value=final_conc_a, target=target_conc_a,
                 unit="ml/L", key="mod3_corr_gauge_A", green_zone=[110, 140],
                 start_value=initial_values.get("conc_a"), tick_interval=20
             )
         with col2:
             display_gauge(
-                label="Concentration B", value=final_conc_b, target=DEFAULT_TARGET_B_ML_L,
+                label="Concentration B", value=final_conc_b, target=target_conc_b,
                 unit="ml/L", key="mod3_corr_gauge_B", green_zone=[40, 60],
                 start_value=initial_values.get("conc_b"), tick_interval=10
             )
@@ -190,12 +199,22 @@ def render_sandbox_ui() -> Dict[str, Any]:
     """Renders the UI components for the Module 3 Sandbox simulator."""
     st.header("1. Set Your Starting Point")
     col1, col2, col3 = st.columns(3)
-    start_volume = col1.number_input("Current Volume in Module 3 (L)", min_value=0.0, max_value=MODULE3_TOTAL_VOLUME, value=100.0, step=10.0, key="mod3_sand_input_vol")
-    start_conc_a = col2.number_input("Measured Conc. of A (ml/L)", min_value=0.0, value=135.0, step=1.0, format="%.1f", key="mod3_sand_input_a")
-    start_conc_b = col3.number_input("Measured Conc. of B (ml/L)", min_value=0.0, value=55.0, step=1.0, format="%.1f", key="mod3_sand_input_b")
+    start_volume = col1.number_input("Current Volume (L)", min_value=0.0, max_value=MODULE3_TOTAL_VOLUME, value=100.0, step=10.0, key="mod3_sand_input_vol")
+    start_conc_a = col2.number_input("Measured Conc. A (ml/L)", min_value=0.0, value=135.0, step=1.0, format="%.1f", key="mod3_sand_input_a")
+    start_conc_b = col3.number_input("Measured Conc. B (ml/L)", min_value=0.0, value=55.0, step=1.0, format="%.1f", key="mod3_sand_input_b")
+
+    st.header("2. Define Simulation Parameters")
+    col1, col2 = st.columns(2)
+    target_conc_a = col1.number_input("Target Conc. A (for Gauge)", min_value=0.0, value=DEFAULT_TARGET_A_ML_L, step=1.0, key="mod3_sand_target_a")
+    target_conc_b = col2.number_input("Target Conc. B (for Gauge)", min_value=0.0, value=DEFAULT_TARGET_B_ML_L, step=1.0, key="mod3_sand_target_b")
+
+    col1, col2 = st.columns(2)
+    makeup_conc_a = col1.number_input("Makeup Conc. A (ml/L)", min_value=0.0, value=DEFAULT_TARGET_A_ML_L, step=1.0, key="mod3_sand_makeup_a")
+    makeup_conc_b = col2.number_input("Makeup Conc. B (ml/L)", min_value=0.0, value=DEFAULT_TARGET_B_ML_L, step=1.0, key="mod3_sand_makeup_b")
+
     available_space = MODULE3_TOTAL_VOLUME - start_volume
     st.info(f"The tank has **{available_space:.2f} L** of available space.")
-    st.header("2. Interactive Controls")
+    st.header("3. Interactive Controls")
     col1, col2 = st.columns(2)
     max_add = available_space if available_space > 0 else 1.0
     water_to_add = col1.slider("Water to Add (L)", 0.0, max_add, 0.0, 0.5, key="mod3_sand_slider_water")
@@ -203,9 +222,14 @@ def render_sandbox_ui() -> Dict[str, Any]:
     total_added = water_to_add + makeup_to_add
     if total_added > available_space: st.error(f"⚠️ Warning: Total additions ({total_added:.2f} L) exceed available space ({available_space:.2f} L)!")
     else: st.success("✅ Total additions are within tank capacity.")
-    return {"start_volume": start_volume, "start_conc_a": start_conc_a, "start_conc_b": start_conc_b, "water_to_add": water_to_add, "makeup_to_add": makeup_to_add}
+    return {
+        "start_volume": start_volume, "start_conc_a": start_conc_a, "start_conc_b": start_conc_b,
+        "water_to_add": water_to_add, "makeup_to_add": makeup_to_add,
+        "target_conc_a": target_conc_a, "target_conc_b": target_conc_b,
+        "makeup_conc_a": makeup_conc_a, "makeup_conc_b": makeup_conc_b
+    }
 
-def display_simulation_results(results: Dict[str, float], initial_values: Dict[str, float]):
+def display_simulation_results(results: Dict[str, float], initial_values: Dict[str, float], target_conc_a: float, target_conc_b: float):
     """Displays the live results of the Module 3 sandbox simulation."""
     with st.expander("Live Results Dashboard", expanded=True):
         final_conc_a = results['new_conc_a']
@@ -224,13 +248,13 @@ def display_simulation_results(results: Dict[str, float], initial_values: Dict[s
         col1, col2 = st.columns(2)
         with col1:
             display_gauge(
-                label="Concentration A", value=final_conc_a, target=DEFAULT_TARGET_A_ML_L,
+                label="Concentration A", value=final_conc_a, target=target_conc_a,
                 unit="ml/L", key="mod3_sand_gauge_A", green_zone=[110, 140],
                 start_value=initial_values.get("conc_a"), tick_interval=20
             )
         with col2:
             display_gauge(
-                label="Concentration B", value=final_conc_b, target=DEFAULT_TARGET_B_ML_L,
+                label="Concentration B", value=final_conc_b, target=target_conc_b,
                 unit="ml/L", key="mod3_sand_gauge_B", green_zone=[40, 60],
                 start_value=initial_values.get("conc_b"), tick_interval=10
             )

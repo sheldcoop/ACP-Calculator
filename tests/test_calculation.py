@@ -10,36 +10,17 @@ from modules.calculation import calculate_module3_correction, calculate_module7_
 
 class TestCalculation(unittest.TestCase):
 
-    def test_module3_both_high(self):
+    def test_module3_backwards_compatibility_mixed(self):
         """
-        Test Case 1: Module 3 (Both High)
-        - Start: 120 L at 130 A / 58 B
-        - Target: 120 A / 50 B
-        - Expected Result: Add ~11.44 L of water.
-        """
-        # Makeup concentrations are the target concentrations
-        makeup_conc_a_ml_l = 120
-        makeup_conc_b_ml_l = 50
-
-        result = calculate_module3_correction(
-            current_volume=120.0,
-            measured_conc_a_ml_l=130.0,
-            measured_conc_b_ml_l=58.0,
-            makeup_conc_a_ml_l=makeup_conc_a_ml_l,
-            makeup_conc_b_ml_l=makeup_conc_b_ml_l,
-            module3_total_volume=260.0  # Assuming a total volume of 260L
-        )
-        self.assertAlmostEqual(result["add_water"], 11.44, places=2)
-        self.assertAlmostEqual(result["add_makeup"], 0.0, places=2)
-
-    def test_module3_mixed(self):
-        """
-        Test Case 2: Module 3 (Mixed)
+        Test Case (User Request): Ensure new logic matches old logic when
+        target and makeup concentrations are the same as the old defaults.
         - Start: 100 L at 150 A / 45 B
         - Target: 120 A / 50 B
-        - Expected Result: Add 140 L of makeup solution.
+        - Makeup: 120 A / 50 B
+        - Expected Result: Add 140 L of makeup solution (same as old logic).
         """
-        # Makeup concentrations are the target concentrations
+        target_conc_a_ml_l = 120
+        target_conc_b_ml_l = 50
         makeup_conc_a_ml_l = 120
         makeup_conc_b_ml_l = 50
 
@@ -47,12 +28,69 @@ class TestCalculation(unittest.TestCase):
             current_volume=100.0,
             measured_conc_a_ml_l=150.0,
             measured_conc_b_ml_l=45.0,
+            target_conc_a_ml_l=target_conc_a_ml_l,
+            target_conc_b_ml_l=target_conc_b_ml_l,
             makeup_conc_a_ml_l=makeup_conc_a_ml_l,
             makeup_conc_b_ml_l=makeup_conc_b_ml_l,
-            module3_total_volume=240.0 # Assuming a total volume of 240L
+            module3_total_volume=240.0
         )
         self.assertAlmostEqual(result["add_water"], 0.0, places=2)
         self.assertAlmostEqual(result["add_makeup"], 140.0, places=2)
+
+    def test_module3_backwards_compatibility_high(self):
+        """
+        Test Case (User Request): Ensure new logic matches old logic (High case).
+        - Start: 120 L at 130 A / 58 B
+        - Target: 120 A / 50 B
+        - Makeup: 120 A / 50 B
+        - Expected Result: Add ~11.44 L of water (same as old logic).
+        """
+        target_conc_a_ml_l = 120
+        target_conc_b_ml_l = 50
+        makeup_conc_a_ml_l = 120
+        makeup_conc_b_ml_l = 50
+
+        result = calculate_module3_correction(
+            current_volume=120.0,
+            measured_conc_a_ml_l=130.0,
+            measured_conc_b_ml_l=58.0,
+            target_conc_a_ml_l=target_conc_a_ml_l,
+            target_conc_b_ml_l=target_conc_b_ml_l,
+            makeup_conc_a_ml_l=makeup_conc_a_ml_l,
+            makeup_conc_b_ml_l=makeup_conc_b_ml_l,
+            module3_total_volume=260.0
+        )
+        self.assertAlmostEqual(result["add_water"], 11.44, places=2)
+        self.assertAlmostEqual(result["add_makeup"], 0.0, places=2)
+
+    def test_module3_separate_target_and_makeup(self):
+        """
+        Test Case 3: New logic with separate target and makeup concentrations.
+        - The current concentration is ABOVE the target, so it should dilute.
+        - This confirms the decision logic uses the TARGET, not the makeup.
+        - Start: 150 L at 110 A / 55 B
+        - Target: 100 A / 50 B
+        - Makeup: 120 A / 60 B (stronger than current)
+        - Expected Result: Add water for dilution, not makeup.
+        """
+        target_conc_a_ml_l = 100
+        target_conc_b_ml_l = 50
+        makeup_conc_a_ml_l = 120  # Stronger than current
+        makeup_conc_b_ml_l = 60   # Stronger than current
+
+        result = calculate_module3_correction(
+            current_volume=150.0,
+            measured_conc_a_ml_l=110.0, # Above target
+            measured_conc_b_ml_l=55.0,  # Above target
+            target_conc_a_ml_l=target_conc_a_ml_l,
+            target_conc_b_ml_l=target_conc_b_ml_l,
+            makeup_conc_a_ml_l=makeup_conc_a_ml_l,
+            makeup_conc_b_ml_l=makeup_conc_b_ml_l,
+            module3_total_volume=250.0
+        )
+        # Expects dilution (water > 0) because current > target
+        self.assertGreater(result["add_water"], 0)
+        self.assertEqual(result["add_makeup"], 0)
 
     def test_module7_all_high(self):
         """
