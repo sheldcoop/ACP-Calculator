@@ -120,7 +120,7 @@ def main():
             st.markdown("---")
             display_module7_correction(auto_correction_result, initial_values_m7)
 
-    # --- Tab 5: Module 7 Sandbox (CORRECTED LOGIC) ---
+    # --- Tab 5: Module 7 Sandbox (THIS BLOCK IS THE ONLY CHANGE) ---
     with tab5:
         sandbox_inputs = render_module7_sandbox_ui()
         initial_values_m7_sb = {
