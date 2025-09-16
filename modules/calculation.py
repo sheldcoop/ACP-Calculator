@@ -1,12 +1,13 @@
 # =====================================================================================
-# CALCULATION MODULE (DEFINITIVE V3 - WITH OPTIMAL PROJECTION LOGIC)
+# CALCULATION MODULE (DEFINITIVE V4 - WITH "TRUE OPTIMIZATION")
 # =====================================================================================
 # This module contains the final, robust logic for all chemistry calculations.
-# It implements optimal "sweet spot" correction via vector projection for dilution.
+# It implements "True Optimization" for fortification cases using SciPy.
 # =====================================================================================
 
 import math
 from typing import Dict, Union
+from scipy.optimize import minimize
 
 EPSILON = 1e-9
 
@@ -76,10 +77,47 @@ def calculate_module3_correction(
         v_makeup_final = 0.0
         status = "OPTIMAL_DILUTION"
     else:
-        # Case 2: Any other situation (all low or mixed). Fortify by topping up with makeup.
-        v_water_final = 0.0
-        v_makeup_final = available_space
-        status = "FORTIFICATION"
+        # Case 2: Any other situation. Use optimization to find the best mix
+        # of water and makeup to add.
+        def objective_function(x):
+            # x[0] = water_to_add, x[1] = makeup_to_add
+            water, makeup = x[0], x[1]
+
+            # Prevent division by zero if no volume
+            final_vol = current_volume + water + makeup
+            if final_vol < EPSILON:
+                return 1e9 # Return a large number if volume is zero
+
+            # Calculate final amounts of each chemical
+            final_a = (current_volume * c_curr_a) + (makeup * c_make_a)
+            final_b = (current_volume * c_curr_b) + (makeup * c_make_b)
+
+            # Calculate final concentrations
+            final_conc_a = final_a / final_vol
+            final_conc_b = final_b / final_vol
+
+            # Return squared error (distance from target)
+            return (final_conc_a - c_target_a)**2 + (final_conc_b - c_target_b)**2
+
+        # Constraints
+        constraints = ({'type': 'ineq', 'fun': lambda x: available_space - x[0] - x[1]})
+
+        # Bounds for variables (water >= 0, makeup >= 0)
+        bounds = [(0, available_space), (0, available_space)]
+
+        # Initial guess (start with simple fortification)
+        initial_guess = [0, available_space]
+
+        # Run the optimization
+        result = minimize(objective_function, initial_guess, bounds=bounds, constraints=constraints)
+
+        if result.success:
+            v_water_final, v_makeup_final = result.x
+            status = "OPTIMAL_FORTIFICATION"
+        else:
+            # Fallback to simple fortification if optimizer fails
+            v_water_final, v_makeup_final = 0.0, available_space
+            status = "FORTIFICATION_FALLBACK"
 
     final_volume = current_volume + v_water_final + v_makeup_final
     final_amount_a = (current_volume * c_curr_a) + (v_makeup_final * c_make_a)
