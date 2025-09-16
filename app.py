@@ -8,6 +8,7 @@
 import streamlit as st
 
 # Import all configuration constants and modules
+from modules.themes import THEMES
 from modules.config import (
     APP_TITLE, TAB1_TITLE,
     MODULE3_TOTAL_VOLUME,
@@ -40,8 +41,27 @@ def main():
     """
     Main function to configure and run the Streamlit application.
     """
-    st.set_page_config(page_title=APP_TITLE, layout="wide")
-    inject_custom_css()
+    st.set_page_config(page_title=APP_TITLE, layout="wide", initial_sidebar_state="expanded")
+
+    # --- Theme Management ---
+    if 'current_theme' not in st.session_state:
+        st.session_state.current_theme = "Mission Control"  # Default theme
+
+    theme_options = list(THEMES.keys())
+
+    st.sidebar.title("Display Settings")
+    selected_theme_name = st.sidebar.selectbox(
+        "Choose a Theme",
+        options=theme_options,
+        index=theme_options.index(st.session_state.current_theme),
+        key="theme_selector"
+    )
+    st.session_state.current_theme = selected_theme_name
+    current_theme = THEMES[st.session_state.current_theme]
+
+    # Inject the CSS for the selected theme
+    inject_custom_css(current_theme)
+
     st.title(APP_TITLE)
     st.markdown("---")
 
@@ -83,7 +103,8 @@ def main():
                 correction_result,
                 initial_values_m3,
                 target_conc_a=module3_inputs['target_conc_a'],
-                target_conc_b=module3_inputs['target_conc_b']
+                target_conc_b=module3_inputs['target_conc_b'],
+                theme=current_theme
             )
 
     # --- Tab 3: Module 3 Sandbox ---
@@ -108,7 +129,8 @@ def main():
             simulation_results,
             initial_values_m3_sb,
             target_conc_a=sandbox_inputs['target_conc_a'],
-            target_conc_b=sandbox_inputs['target_conc_b']
+            target_conc_b=sandbox_inputs['target_conc_b'],
+            theme=current_theme
         )
 
     # --- Tab 4: Module 7 Corrector ---
@@ -142,7 +164,8 @@ def main():
                     "cond": m7_inputs['target_cond'],
                     "cu": m7_inputs['target_cu'],
                     "h2o2": m7_inputs['target_h2o2']
-                }
+                },
+                theme=current_theme
             )
 
     # --- Tab 5: Module 7 Sandbox ---
@@ -174,7 +197,8 @@ def main():
                 "cond": sandbox_inputs['target_cond'],
                 "cu": sandbox_inputs['target_cu'],
                 "h2o2": sandbox_inputs['target_h2o2']
-            }
+            },
+            theme=current_theme
         )
 
 

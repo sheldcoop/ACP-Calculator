@@ -25,117 +25,154 @@ from .config import (
     MODULE7_TARGET_H2O2_ML_L,
 )
 
+from .themes import Theme
+
 # --- UI Helper Functions ---
 
-def inject_custom_css():
-    """Injects custom CSS to style the app, creating the 'Mission Control' theme."""
-    st.markdown(
-        """
+def inject_custom_css(theme: Theme):
+    """
+    Injects custom CSS to style the app based on the selected theme.
+    This function acts as a dynamic theme engine.
+    """
+    aurora_css = """
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            pointer-events: none;
+            background: radial-gradient(circle at 60% 20%, #ff00ff, transparent 40%),
+                        radial-gradient(circle at 20% 80%, #00ffff, transparent 40%),
+                        radial-gradient(circle at 80% 70%, #ffff00, transparent 40%);
+            background-size: 200% 200%;
+            animation: aurora-animation 20s ease infinite;
+            filter: blur(100px);
+            opacity: 0.5;
+        }
+
+        @keyframes aurora-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+    """ if theme.use_aurora_bg else ""
+
+    custom_rules_str = ""
+    if theme.custom_css_rules:
+        for selector, rule in theme.custom_css_rules.items():
+            custom_rules_str += f"{selector} {{ {rule} }}\n"
+
+    css = f"""
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=IBM+Plex+Mono:wght@500&display=swap');
+            @import url('{theme.base_font_url}');
+            @import url('{theme.mono_font_url}');
+
+            {aurora_css}
 
             /* --- Base Font --- */
-            html, body, [class*="st-"], .st-emotion-cache-10trblm {
-                font-family: 'Inter', sans-serif;
-            }
+            html, body, [class*="st-"], .st-emotion-cache-10trblm {{
+                font-family: {theme.base_font_family};
+            }}
 
-            h1, h2, h3 {
-                font-family: 'Inter', sans-serif;
+            /* This is required to override Streamlit's default body background */
+            .st-emotion-cache-10trblm {{
+                background-color: {theme.backgroundColor};
+            }}
+
+            h1, h2, h3 {{
+                font-family: {theme.base_font_family};
                 font-weight: 700;
-                color: #F0F2F6; /* Ensure headers are light */
-            }
+                color: {theme.textColor};
+            }}
 
-            h1 {
-                text-shadow: 0 0 8px rgba(0, 169, 255, 0.5);
-            }
+            h1 {{
+                text-shadow: 0 0 8px {theme.primaryColor}80; /* 50% opacity */
+            }}
 
             /* --- Glass Panel Cards for Expanders --- */
-            div[data-testid="stExpander"] {
-                background-color: rgba(44, 58, 71, 0.5); /* secondaryBackgroundColor with alpha */
-                border: 1px solid rgba(255, 255, 255, 0.1);
+            div[data-testid="stExpander"] {{
+                background-color: {theme.glass_bg_color};
+                border: 1px solid {theme.glass_border_color};
                 border-radius: 10px;
-                box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-                backdrop-filter: blur(10px);
-                -webkit-backdrop-filter: blur(10px);
-            }
+                box-shadow: {theme.card_box_shadow};
+                backdrop-filter: blur({theme.glass_blur_radius});
+                -webkit-backdrop-filter: blur({theme.glass_blur_radius});
+            }}
 
-            div[data-testid="stExpander"] summary {
+            div[data-testid="stExpander"] summary {{
                 font-size: 1.1rem;
                 font-weight: 600;
-                color: #F0F2F6;
-            }
+                color: {theme.textColor};
+            }}
 
-            /* Remove the border around the main content area of the expander */
-            div[data-testid="stExpander"] [data-testid="stVerticalBlock"] {
+            div[data-testid="stExpander"] [data-testid="stVerticalBlock"] {{
                  border: none !important;
-            }
-
+            }}
 
             /* --- Monospace for numbers --- */
-            div[data-testid="stMetricValue"], .stNumberInput input {
-                font-family: 'IBM Plex Mono', monospace;
+            div[data-testid="stMetricValue"], .stNumberInput input {{
+                font-family: {theme.mono_font_family};
                 font-weight: 500;
-                color: #00A9FF; /* Make metrics glow */
-                text-shadow: 0 0 5px rgba(0, 169, 255, 0.5);
-            }
+                color: {theme.primaryColor};
+                text-shadow: 0 0 5px {theme.primaryColor}80;
+            }}
 
             /* --- Button Styling --- */
-            .stButton>button {
+            .stButton>button {{
                 border-radius: 8px;
-                border: 1px solid #00A9FF;
-                color: #00A9FF;
+                border: 1px solid {theme.primaryColor};
+                color: {theme.primaryColor};
                 background-color: transparent;
                 transition: all 0.2s ease-in-out;
                 font-weight: 600;
-            }
+            }}
 
-            .stButton>button:hover {
-                background-color: #00A9FF;
-                color: #1A202C;
-                border: 1px solid #00A9FF;
-                box-shadow: 0 0 10px #00A9FF;
-            }
+            .stButton>button:hover {{
+                background-color: {theme.primaryColor};
+                color: {theme.backgroundColor};
+                border: 1px solid {theme.primaryColor};
+                box-shadow: 0 0 10px {theme.primaryColor};
+            }}
 
-            .stButton>button:focus {
-                box-shadow: 0 0 10px #00A9FF !important;
-                background-color: #00A9FF;
-                color: #1A202C;
-            }
+            .stButton>button:focus {{
+                box-shadow: 0 0 10px {theme.primaryColor} !important;
+                background-color: {theme.primaryColor};
+                color: {theme.backgroundColor};
+            }}
 
             /* --- Tab Styling --- */
-            button[data-baseweb="tab"] {
+            button[data-baseweb="tab"] {{
                 font-size: 1rem;
                 font-weight: 600;
-            }
-
-            /* --- Remove border from main block container --- */
-            .main .block-container {
-                padding-top: 2rem; /* Add some space at the top */
-            }
+            }}
 
             /* --- Custom Alert Boxes --- */
-            div[data-baseweb="notification"] {
-                background-color: rgba(44, 58, 71, 0.7);
+            div[data-baseweb="notification"] {{
+                background-color: {theme.glass_bg_color};
                 border-radius: 10px;
                 border: 1px solid;
-            }
-            div[data-baseweb="notification"][class*="kind-success"] {
-                border-color: rgba(51, 255, 153, 0.5);
-            }
-            div[data-baseweb="notification"][class*="kind-info"] {
-                border-color: rgba(0, 169, 255, 0.5);
-            }
-            div[data-baseweb="notification"][class*="kind-warning"] {
-                border-color: rgba(255, 195, 0, 0.5);
-            }
-            div[data-baseweb="notification"][class*="kind-error"] {
-                border-color: rgba(255, 107, 107, 0.5);
-            }
+            }}
+            div[data-baseweb="notification"][class*="kind-success"] {{
+                border-color: {theme.alert_success_border};
+            }}
+            div[data-baseweb="notification"][class*="kind-info"] {{
+                border-color: {theme.alert_info_border};
+            }}
+            div[data-baseweb="notification"][class*="kind-warning"] {{
+                border-color: {theme.alert_warning_border};
+            }}
+            div[data-baseweb="notification"][class*="kind-error"] {{
+                border-color: {theme.alert_error_border};
+            }}
 
+            /* --- Custom Theme-Specific Rules --- */
+            {custom_rules_str}
         </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    """
+    st.markdown(css, unsafe_allow_html=True)
 
 
 def display_gauge(
@@ -143,108 +180,74 @@ def display_gauge(
     value: float,
     target: float,
     unit: str,
-    key: str, # Keep key for uniqueness
+    key: str,
+    theme: Theme,
     start_value: Optional[float] = None,
     green_zone: Optional[List[float]] = None,
     tick_interval: Optional[float] = None
 ):
-    """Displays a sleek, 'Mission Control' style gauge with animation."""
+    """Displays a sleek, theme-aware gauge with animation."""
 
-    # Helper to create the figure
     def _create_figure(val):
-        # --- Delta Indicator Logic ---
         delta_text = ""
-        # The delta should always compare the FINAL value to the start_value
         if start_value is not None and not math.isclose(start_value, value):
             delta = value - start_value
-            if delta > 0:
-                # Use a less intrusive color that fits the theme
-                delta_text = f"<span style='color:#33FF99; font-size:0.8em;'> (▲ +{delta:.2f})</span>"
-            else:
-                # Use a less intrusive color that fits the theme
-                delta_text = f"<span style='color:#FF6B6B; font-size:0.8em;'> (▼ {delta:.2f})</span>"
+            delta_color = theme.alert_success_border if delta > 0 else theme.alert_error_border
+            delta_char = "▲" if delta > 0 else "▼"
+            delta_text = f"<span style='color:{delta_color}; font-size:0.8em;'> ({delta_char} {delta:+.2f})</span>"
 
-        # --- Color & Zone Definitions ---
-        colors = {"danger": "#3D566D", "warning": "#48D1CC", "good": "#00A9FF"}
+        colors = {"danger": theme.gauge_danger_color, "good": theme.gauge_good_color}
         if green_zone:
-            max_val = target * 2.5 # Give more room for the gauge
-            # Ensure zones don't overlap and cover the range
+            max_val = target * 2.5
             steps = [
                 {'range': [0, green_zone[0]], 'color': colors['danger']},
                 {'range': green_zone, 'color': colors['good']},
                 {'range': [green_zone[1], max_val], 'color': colors['danger']}
             ]
-        else: # Fallback if no green_zone is defined
+        else:
             max_val = target * 2.5
             steps = [{'range': [0, max_val], 'color': colors['danger']}]
 
-        # --- Axis Configuration ---
         axis_config = {
-            'range': [0, max_val],
-            'tickwidth': 1,
-            'tickcolor': "#F0F2F6", # Light text color
-            'tickfont': {'color': "#F0F2F6"}
+            'range': [0, max_val], 'tickwidth': 1, 'tickcolor': theme.textColor,
+            'tickfont': {'color': theme.textColor}
         }
         if tick_interval:
             axis_config['dtick'] = tick_interval
 
-        # --- Figure Creation ---
         fig = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=val, # Use the passed-in value for animation
+            mode="gauge+number", value=val,
             title={
                 'text': f"<b>{label}</b><br><span style='font-size:0.8em;color:gray'>{unit}</span>{delta_text}",
-                'align': 'center',
-                'font': {'color': "#F0F2F6", 'family': "Inter"}
+                'align': 'center', 'font': {'color': theme.textColor, 'family': theme.base_font_family.split(',')[0].strip()}
             },
             number={
-                'valueformat': '.2f',
-                'suffix': f" / {target:.2f}",
-                'font': {'family': "IBM Plex Mono", 'color': "#00A9FF"} # This color will be overridden by CSS glow
+                'valueformat': '.2f', 'suffix': f" / {target:.2f}",
+                'font': {'family': theme.mono_font_family.split(',')[0].strip(), 'color': theme.primaryColor}
             },
             gauge={
-                'axis': axis_config,
-                'bar': {'color': "rgba(0, 169, 255, 0.7)", 'thickness': 0}, # Main value bar - thickness 0 makes it invisible but still drives the needle
-                'bgcolor': 'rgba(0,0,0,0)',
-                'steps': steps,
-                'threshold': {
-                    'line': {'color': "#FFFFFF", 'width': 3},
-                    'thickness': 0.9,
-                    'value': target
-                }
-            }))
+                'axis': axis_config, 'bar': {'color': theme.gauge_needle_color, 'thickness': 0},
+                'bgcolor': 'rgba(0,0,0,0)', 'steps': steps,
+                'threshold': {'line': {'color': theme.gauge_target_color, 'width': 3}, 'thickness': 0.9, 'value': target}
+            }
+        ))
 
         fig.update_layout(
-            height=250,
-            margin=dict(l=20, r=20, t=80, b=20),
-            paper_bgcolor='rgba(0,0,0,0)', # Transparent background
-            font={'color': "#F0F2F6", 'family': "Inter"}
+            height=250, margin=dict(l=20, r=20, t=80, b=20), paper_bgcolor='rgba(0,0,0,0)',
+            font={'color': theme.textColor, 'family': theme.base_font_family.split(',')[0].strip()}
         )
         return fig
 
-    # --- Animation Logic ---
-    # Animate only if start_value is provided and different from the end value
     if start_value is not None and not math.isclose(start_value, value):
         gauge_placeholder = st.empty()
-
         animation_steps = 20
-        animation_duration = 0.5 # seconds
-
-        # Animate from start_value to value
+        animation_duration = 0.5
         for i in range(animation_steps + 1):
-            # Interpolate value
             interp_value = np.interp(i, [0, animation_steps], [start_value, value])
-
-            # Create the figure with the intermediate value
             fig = _create_figure(interp_value)
-
-            # Update the placeholder
             gauge_placeholder.plotly_chart(fig, use_container_width=True)
-
-            # Pause
             time.sleep(animation_duration / animation_steps)
     else:
-        # Just draw the final gauge without animation
         fig = _create_figure(value)
         st.plotly_chart(fig, use_container_width=True, key=f"gauge_{key}")
 
@@ -306,11 +309,10 @@ def render_module3_ui() -> Dict[str, Any]:
         user_inputs['submitted'] = st.form_submit_button("Calculate Correction")
     return user_inputs
 
-def display_module3_correction(result: Dict[str, Any], initial_values: Dict[str, float], target_conc_a: float, target_conc_b: float):
+def display_module3_correction(result: Dict[str, Any], initial_values: Dict[str, float], target_conc_a: float, target_conc_b: float, theme: Theme):
     """Displays the calculated correction recipe for Module 3."""
     with st.expander("View Correction and Final State", expanded=True):
         st.header("2. Recommended Correction")
-        # ... (keep existing code for status, recipe display) ...
         status = result.get("status")
         if status == "PERFECT":
             st.success(f"✅ {result.get('message')}")
@@ -327,7 +329,6 @@ def display_module3_correction(result: Dict[str, Any], initial_values: Dict[str,
         final_conc_a = result.get("final_conc_a", 0)
         final_conc_b = result.get("final_conc_b", 0)
 
-        # --- High-Level Status Summary (New!) ---
         is_a_good = 110 <= final_conc_a <= 140
         is_b_good = 40 <= final_conc_b <= 60
         if is_a_good and is_b_good:
@@ -342,13 +343,13 @@ def display_module3_correction(result: Dict[str, Any], initial_values: Dict[str,
             display_gauge(
                 label="Concentration A", value=final_conc_a, target=target_conc_a,
                 unit="ml/L", key="mod3_corr_gauge_A", green_zone=[110, 140],
-                start_value=initial_values.get("conc_a"), tick_interval=20
+                start_value=initial_values.get("conc_a"), tick_interval=20, theme=theme
             )
         with col2:
             display_gauge(
                 label="Concentration B", value=final_conc_b, target=target_conc_b,
                 unit="ml/L", key="mod3_corr_gauge_B", green_zone=[40, 60],
-                start_value=initial_values.get("conc_b"), tick_interval=10
+                start_value=initial_values.get("conc_b"), tick_interval=10, theme=theme
             )
 
 
@@ -389,13 +390,12 @@ def render_sandbox_ui() -> Dict[str, Any]:
         "makeup_conc_a": makeup_conc_a, "makeup_conc_b": makeup_conc_b
     }
 
-def display_simulation_results(results: Dict[str, float], initial_values: Dict[str, float], target_conc_a: float, target_conc_b: float):
+def display_simulation_results(results: Dict[str, float], initial_values: Dict[str, float], target_conc_a: float, target_conc_b: float, theme: Theme):
     """Displays the live results of the Module 3 sandbox simulation."""
     with st.expander("Live Results Dashboard", expanded=True):
         final_conc_a = results['new_conc_a']
         final_conc_b = results['new_conc_b']
 
-        # --- High-Level Status Summary (New!) ---
         is_a_good = 110 <= final_conc_a <= 140
         is_b_good = 40 <= final_conc_b <= 60
         if is_a_good and is_b_good:
@@ -410,13 +410,13 @@ def display_simulation_results(results: Dict[str, float], initial_values: Dict[s
             display_gauge(
                 label="Concentration A", value=final_conc_a, target=target_conc_a,
                 unit="ml/L", key="mod3_sand_gauge_A", green_zone=[110, 140],
-                start_value=initial_values.get("conc_a"), tick_interval=20
+                start_value=initial_values.get("conc_a"), tick_interval=20, theme=theme
             )
         with col2:
             display_gauge(
                 label="Concentration B", value=final_conc_b, target=target_conc_b,
                 unit="ml/L", key="mod3_sand_gauge_B", green_zone=[40, 60],
-                start_value=initial_values.get("conc_b"), tick_interval=10
+                start_value=initial_values.get("conc_b"), tick_interval=10, theme=theme
             )
 
 
@@ -452,7 +452,7 @@ def render_module7_corrector_ui() -> Dict[str, Any]:
         user_inputs['submitted'] = st.form_submit_button("Calculate Correction")
     return user_inputs
 
-def display_module7_correction(result: Dict[str, Any], initial_values: Dict[str, float], targets: Dict[str, float]):
+def display_module7_correction(result: Dict[str, Any], initial_values: Dict[str, float], targets: Dict[str, float], theme: Theme):
     """Displays the calculated correction recipe for Module 7."""
     with st.expander("View Correction and Final State", expanded=True):
         st.header("2. Recommended Correction")
@@ -479,7 +479,6 @@ def display_module7_correction(result: Dict[str, Any], initial_values: Dict[str,
         final_cu = result.get('final_cu', 0)
         final_h2o2 = result.get('final_h2o2', 0)
 
-        # NOTE: You can customize these green zones if needed
         is_cond_good = 160 <= final_cond <= 200
         is_cu_good = 18 <= final_cu <= 22
         is_h2o2_good = 6.0 <= final_h2o2 <= 8.0
@@ -493,16 +492,11 @@ def display_module7_correction(result: Dict[str, Any], initial_values: Dict[str,
 
         col1, col2, col3 = st.columns(3)
         with col1:
-            display_gauge("Conditioner", final_cond, targets['cond'], "ml/L", "m7_corr_gauge_cond", start_value=initial_values.get("cond"), green_zone=[160, 200], tick_interval=20)
+            display_gauge("Conditioner", final_cond, targets['cond'], "ml/L", "m7_corr_gauge_cond", start_value=initial_values.get("cond"), green_zone=[160, 200], tick_interval=20, theme=theme)
         with col2:
-            display_gauge("Cu Etch", final_cu, targets['cu'], "g/L", "m7_corr_gauge_cu", start_value=initial_values.get("cu"), green_zone=[18, 22], tick_interval=2)
+            display_gauge("Cu Etch", final_cu, targets['cu'], "g/L", "m7_corr_gauge_cu", start_value=initial_values.get("cu"), green_zone=[18, 22], tick_interval=2, theme=theme)
         with col3:
-            display_gauge("H2O2", final_h2o2, targets['h2o2'], "ml/L", "m7_corr_gauge_h2o2", start_value=initial_values.get("h2o2"), green_zone=[6, 8], tick_interval=1)
-
-# modules/ui.py
-
-# ... (keep all the code from the top of the file down to this point) ...
-# ... (the display_module7_correction function should be the last one you keep) ...
+            display_gauge("H2O2", final_h2o2, targets['h2o2'], "ml/L", "m7_corr_gauge_h2o2", start_value=initial_values.get("h2o2"), green_zone=[6, 8], tick_interval=1, theme=theme)
 
 
 # --- Tab 5: Module 7 Sandbox ---
@@ -553,12 +547,11 @@ def render_module7_sandbox_ui() -> Dict[str, Any]:
         "makeup_cond": makeup_cond, "makeup_cu": makeup_cu, "makeup_h2o2": makeup_h2o2
     }
 
-def display_module7_simulation(results: Dict[str, float], initial_values: Dict[str, float], targets: Dict[str, float]):
+def display_module7_simulation(results: Dict[str, float], initial_values: Dict[str, float], targets: Dict[str, float], theme: Theme):
     """Displays the live results of the Module 7 sandbox simulation."""
     with st.expander("Live Results Dashboard", expanded=True):
         final_cond, final_cu, final_h2o2 = results['new_cond'], results['new_cu'], results['new_h2o2']
         
-        # High-Level Status Summary
         is_cond_good = 160 <= final_cond <= 200
         is_cu_good = 18 <= final_cu <= 22
         is_h2o2_good = 5.0 <= final_h2o2 <= 8.0
@@ -570,11 +563,11 @@ def display_module7_simulation(results: Dict[str, float], initial_values: Dict[s
         st.metric("New Tank Volume", f"{results['new_volume']:.2f} L")
         col1, col2, col3 = st.columns(3)
         with col1:
-            display_gauge("Conditioner", final_cond, targets['cond'], "ml/L", "m7_sand_gauge_cond", start_value=initial_values.get("cond"), green_zone=[160, 200], tick_interval=20)
+            display_gauge("Conditioner", final_cond, targets['cond'], "ml/L", "m7_sand_gauge_cond", start_value=initial_values.get("cond"), green_zone=[160, 200], tick_interval=20, theme=theme)
         with col2:
-            display_gauge("Cu Etch", final_cu, targets['cu'], "g/L", "m7_sand_gauge_cu", start_value=initial_values.get("cu"), green_zone=[18, 22], tick_interval=2)
+            display_gauge("Cu Etch", final_cu, targets['cu'], "g/L", "m7_sand_gauge_cu", start_value=initial_values.get("cu"), green_zone=[18, 22], tick_interval=2, theme=theme)
         with col3:
-            display_gauge("H2O2", final_h2o2, targets['h2o2'], "ml/L", "m7_sand_gauge_h2o2", start_value=initial_values.get("h2o2"), green_zone=[5, 8], tick_interval=1)
+            display_gauge("H2O2", final_h2o2, targets['h2o2'], "ml/L", "m7_sand_gauge_h2o2", start_value=initial_values.get("h2o2"), green_zone=[5, 8], tick_interval=1, theme=theme)
 
 
 
