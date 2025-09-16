@@ -161,13 +161,22 @@ def run_main_app(app_config: list):
                 for i, chemical in enumerate(selected_module_config['chemicals']):
                     with cols[i]:
                         internal_id = chemical['internal_id']
+                        # Check for custom gauge settings in the config
+                        green_zone = None
+                        if 'green_zone_min' in chemical and 'green_zone_max' in chemical:
+                            green_zone = [chemical['green_zone_min'], chemical['green_zone_max']]
+
+                        tick_interval = chemical.get('tick_interval')
+
                         display_gauge(
                             label=chemical['name'],
                             value=sim_results.get(f"new_{internal_id}", 0),
                             target=chemical['target'],
                             unit=chemical['unit'],
                             key=f"sim_gauge_{selected_module_config['name']}_{internal_id}",
-                            start_value=sim_inputs.get(f"current_{internal_id}")
+                            start_value=sim_inputs.get(f"current_{internal_id}"),
+                            green_zone=green_zone,
+                            tick_interval=tick_interval
                         )
 
 

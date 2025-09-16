@@ -19,7 +19,10 @@ class TestDynamicApp(unittest.TestCase):
                 "module_type": "2-Component Corrector",
                 "total_volume": 240.0,
                 "chemicals": [
-                    {"name": "Acid", "unit": "ml/L", "target": 120.0, "internal_id": "A"},
+                    {
+                        "name": "Acid", "unit": "ml/L", "target": 120.0, "internal_id": "A",
+                        "green_zone_min": 110.0, "green_zone_max": 130.0, "tick_interval": 20.0
+                    },
                     {"name": "Brightener", "unit": "ml/L", "target": 50.0, "internal_id": "B"}
                 ]
             },

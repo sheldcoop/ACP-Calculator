@@ -169,15 +169,22 @@ def display_dynamic_correction(result: Dict[str, Any], module_config: Dict[str, 
         for i, chemical in enumerate(module_config['chemicals']):
             with cols[i]:
                 internal_id = chemical['internal_id']
+                # Check for custom gauge settings in the config
+                green_zone = None
+                if 'green_zone_min' in chemical and 'green_zone_max' in chemical:
+                    green_zone = [chemical['green_zone_min'], chemical['green_zone_max']]
+
+                tick_interval = chemical.get('tick_interval')
+
                 display_gauge(
                     label=chemical['name'],
                     value=result.get(f"final_{internal_id}", 0),
-                    target=chemical['target'],
+                    target=initial_inputs.get(f"target_{internal_id}", chemical['target']),
                     unit=chemical['unit'],
                     key=f"gauge_{module_config['name']}_{internal_id}",
                     start_value=initial_inputs.get(f"current_{internal_id}"),
-                    # A default green zone can be set, e.g., +/- 10% of target
-                    green_zone=[chemical['target'] * 0.9, chemical['target'] * 1.1]
+                    green_zone=green_zone,
+                    tick_interval=tick_interval
                 )
 
 def render_config_editor(config_in_progress: List[Dict[str, Any]]):
@@ -220,6 +227,15 @@ def render_config_editor(config_in_progress: List[Dict[str, Any]]):
                 chem['name'] = st.text_input("Display Name", value=chem.get('name', f"Chemical {chemical_id}"), key=f"chem_name_{i}_{j}")
                 chem['unit'] = st.text_input("Unit (e.g., g/L)", value=chem.get('unit', 'ml/L'), key=f"chem_unit_{i}_{j}")
                 chem['target'] = st.number_input("Target Concentration", min_value=0.0, value=chem.get('target', 100.0), format="%.2f", key=f"chem_target_{i}_{j}")
+
+                with st.expander("Advanced Gauge Options"):
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        chem['green_zone_min'] = st.number_input("Optimal Range Min", value=chem.get('green_zone_min', chem['target'] * 0.9), key=f"chem_gz_min_{i}_{j}")
+                    with col2:
+                        chem['green_zone_max'] = st.number_input("Optimal Range Max", value=chem.get('green_zone_max', chem['target'] * 1.1), key=f"chem_gz_max_{i}_{j}")
+                    with col3:
+                        chem['tick_interval'] = st.number_input("Tick Interval", min_value=0.0, value=chem.get('tick_interval', chem['target'] / 5.0), key=f"chem_tick_{i}_{j}")
 
     if st.button("➕ Add Another Module"):
         config_in_progress.append({
