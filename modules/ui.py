@@ -433,8 +433,8 @@ def display_module7_simulation(results: Dict[str, float], initial_values: Dict[s
 
 def render_explanation_tab():
     """
-    Renders the content for the new 'How It Works' tab, explaining the
-    optimization algorithms with interactive visualizations.
+    Renders the content for the 'How It Works' tab, explaining the
+    optimization algorithms with text-based examples.
     """
     st.header("Understanding the Optimization Engine")
     st.write("""
@@ -445,190 +445,96 @@ def render_explanation_tab():
 
     with st.expander("Case 1: Optimal Dilution (When All Concentrations Are High)", expanded=True):
         st.subheader("The Concept: The Shortest Path Back to the Target Ratio")
-        st.write("This method is used when **all** of your chemical concentrations are higher than their target values. Instead of just diluting randomly, the calculator finds the most efficient way to bring the concentrations down. It treats the concentrations as a point in space and calculates the 'straightest line' back towards the ideal chemical ratio.")
+        st.write(
+            """
+            This method is used when **all** of your chemical concentrations are higher than their target values.
+            Instead of just diluting randomly, the calculator finds the most efficient way to bring the
+            concentrations down while perfectly preserving the ideal ratio between the chemicals.
+            """
+        )
 
-        st.subheader("The Math: Vector Projection")
-        st.write("The algorithm uses a mathematical concept called **vector projection**. It projects the 'current concentration' vector onto the 'target concentration' vector. The result tells us the exact point on the target ratio line that we can reach by only adding water.")
+        st.subheader("An Intuitive Example")
+        st.write(
+            """
+            Imagine your bath requires Chemical A and Chemical B to be in a perfect **2-to-1 ratio**.
+
+            - **Target State:** 100 ml/L of Chemical A and 50 ml/L of Chemical B. (Ratio is 100:50, which is 2:1)
+            - **Current State:** Your bath measures 180 ml/L of A and 120 ml/L of B. (Ratio is 180:120, which is 3:2)
+
+            Both chemicals are too high, and their ratio is incorrect. A simple dilution with a random amount of water might fix one chemical but leave the other still incorrect. So, how much water should you add?
+            """
+        )
+
+        st.subheader("The Logic: Using Vector Math")
+        st.write(
+            """
+            The calculator treats these concentrations as points, or 'vectors', in a 2D space. The goal is to find the shortest path from the 'Current State' point back to the line that represents the perfect 'Target State' ratio.
+
+            This is done using a mathematical tool called **vector projection**. The logic is as follows:
+
+            1.  **Define Vectors:** We have a 'current' vector `C_current = (180, 120)` and a 'target' vector `C_target = (100, 50)`.
+            2.  **Find the Ideal Dilution Point:** We project the current vector onto the line defined by the target vector. This gives us a new point on that line, let's say `(150, 75)`. Notice that this new point *perfectly* maintains the 2:1 target ratio.
+            3.  **Calculate Water Addition:** The calculator then determines how much water must be added to the current volume to get from the 'Current State' `(180, 120)` to this 'Ideal Dilution Point' `(150, 75)`. This becomes the recommended amount of water to add.
+
+            This method ensures you don't waste chemicals by over-diluting and you hit the ideal chemical ratio in a single, efficient step.
+            """
+        )
         st.latex(r'''
-            \text{Final Conc.} = \left( \frac{\vec{C}_{\text{current}} \cdot \vec{C}_{\text{target}}}{\|\vec{C}_{\text{current}}\|^2} \right) \vec{C}_{\text{current}}
+            \vec{C}_{\text{ideal}} = \left( \frac{\vec{C}_{\text{current}} \cdot \vec{C}_{\text{target}}}{\|\vec{C}_{\text{target}}\|^2} \right) \vec{C}_{\text{target}}
         ''')
 
-        st.subheader("Interactive Visualization")
-        _render_dilution_plot()
 
-
-    with st.expander("Case 2: Optimal Fortification (When Any Concentration Is Low)", expanded=False):
+    with st.expander("Case 2: Optimal Fortification (When Any Concentration Is Low)", expanded=True):
         st.subheader("The Concept: Finding the 'Sweet Spot'")
-        st.write("This is the more common scenario, where at least one of your chemical concentrations is below its target. Here, we need to add a mix of water and a concentrated 'makeup' solution. The goal is to find the **perfect blend** that gets us as close as possible to the target concentrations, without exceeding the tank's volume.")
+        st.write(
+            """
+            This is the more common and complex scenario, used when at least one of your chemical concentrations is below its target. Here, we need to add a mix of water and a concentrated 'makeup' solution. The goal is to find the **perfect recipe** that gets us as close as possible to the target concentrations, without exceeding the tank's volume.
+            """
+        )
 
-        st.subheader("The Math: Minimizing the 'Error'")
-        st.write("The calculator uses a powerful optimization algorithm from the `SciPy` library. It works by minimizing an 'objective function', which is essentially the distance (or error) between the final concentrations and the target concentrations. The function it tries to minimize is:")
+        st.subheader("An Intuitive Example: The Hiker in the Valley")
+        st.write(
+            """
+            Imagine you are a hiker standing on the side of a mountain, and your goal is to get to the lowest point in a specific valley.
+
+            - **Your Position:** This is the *current concentration* in your tank.
+            - **The Valley Bottom:** This is the *target concentration*.
+            - **The 'Error' Landscape:** The terrain of the mountain is the 'error surface'. The further you are from the valley bottom, the higher your 'error'.
+            - **The Goal:** Find the shortest, most efficient path to the valley bottom.
+
+            This is what the SciPy optimizer does. It's a "smart hiker".
+            """
+        )
+
+        st.subheader("The Logic: How the 'Hiker' Finds the Path")
+        st.write(
+            """
+            The optimizer doesn't know where the bottom of the valley is. It can only feel the slope of the ground right where it's standing. The process looks like this:
+
+            1.  **Check the Slope:** The optimizer calculates the 'gradient' at its current position. This is the direction of the steepest downhill slope.
+            2.  **Take a Step:** It takes a small step in that downhill direction.
+            3.  **Repeat:** It checks the slope again from its new position and takes another step.
+
+            It repeats this "look-step-look-step" process until it reaches a point where every direction is uphill. That's the bottom of the valley—the point of minimum error and the **optimal recipe**.
+            """
+        )
+
+        st.subheader("The Math: Minimizing the 'Error' Function")
+        st.write(
+            """
+            The 'error' is calculated as the squared distance between the final and target concentrations. The function the optimizer tries to minimize is:
+            """
+        )
         st.latex(r'''
             \text{minimize} \quad \sum_{i} (C_{\text{final}, i} - C_{\text{target}, i})^2
         ''')
-        st.write("This is done while respecting the physical constraints of the tank:")
+        st.write("The 'hiker' must also stay within a fenced area, which represents the physical constraints of the tank:")
         st.latex(r'''
             \text{Volume}_{\text{water}} + \text{Volume}_{\text{makeup}} \leq \text{Available Space}
         ''')
-
-        st.subheader("Interactive Visualization")
-        _render_fortification_plot()
-
-
-def _render_dilution_plot():
-    """Renders the interactive Plotly chart for the dilution explanation."""
-    st.write("Use the sliders below to see how the optimal dilution is calculated in real-time. This example uses two chemicals, A and B.")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write("Current (High) Concentrations:")
-        curr_a = st.slider("Current Conc. A", 100, 200, 180, key="dil_curr_a")
-        curr_b = st.slider("Current Conc. B", 50, 150, 110, key="dil_curr_b")
-    with col2:
-        st.write("Target Concentrations:")
-        target_a = st.slider("Target Conc. A", 50, 150, 120, key="dil_target_a")
-        target_b = st.slider("Target Conc. B", 20, 80, 50, key="dil_target_b")
-
-    # Vector calculations
-    vec_current = np.array([curr_a, curr_b])
-    vec_target = np.array([target_a, target_b])
-
-    # Projection calculation
-    projection_scalar = np.dot(vec_current, vec_target) / np.dot(vec_target, vec_target)
-    vec_projected = projection_scalar * vec_target
-
-    # This is the point on the target ratio line we can reach by dilution
-    dilution_point = (np.dot(vec_current, vec_target) / np.dot(vec_current, vec_current)) * vec_current
-
-    fig = go.Figure()
-
-    # 1. Add vectors as annotations (arrows)
-    fig.add_annotation(x=curr_a, y=curr_b, ax=0, ay=0, xref='x', yref='y', axref='x', ayref='y', showarrow=True, arrowhead=2, arrowsize=1.5, arrowwidth=2, arrowcolor='blue')
-    fig.add_annotation(x=target_a, y=target_b, ax=0, ay=0, xref='x', yref='y', axref='x', ayref='y', showarrow=True, arrowhead=2, arrowsize=1.5, arrowwidth=2, arrowcolor='green')
-
-    # 2. Add points
-    fig.add_trace(go.Scatter(x=[0, curr_a, target_a, dilution_point[0]], y=[0, curr_b, target_b, dilution_point[1]],
-                             mode='markers+text',
-                             marker=dict(size=[5, 12, 12, 12], color=['black', 'blue', 'green', 'red']),
-                             text=['Origin', 'Current', 'Target', 'Optimal Dilution'],
-                             textposition="top center",
-                             hoverinfo='none'))
-
-    # 3. Add the dilution line
-    fig.add_trace(go.Scatter(x=[curr_a, dilution_point[0]], y=[curr_b, dilution_point[1]], mode='lines',
-                             line=dict(color='red', width=2, dash='dash'),
-                             name='Dilution Path'))
-
-    # 4. Add the target ratio line
-    max_val = max(curr_a, curr_b, target_a, target_b) * 1.2
-    fig.add_trace(go.Scatter(x=[0, vec_target[0]*(max_val/vec_target[0])], y=[0, vec_target[1]*(max_val/vec_target[0])], mode='lines',
-                             line=dict(color='green', width=1, dash='dot'),
-                             name='Target Ratio'))
-
-    fig.update_layout(
-        title="Optimal Dilution via Vector Projection",
-        xaxis_title="Concentration of Chemical A",
-        yaxis_title="Concentration of Chemical B",
-        xaxis=dict(range=[0, max_val]),
-        yaxis=dict(range=[0, max_val]),
-        showlegend=False,
-        height=500,
-        margin=dict(l=20, r=20, t=40, b=20)
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-
-def _render_fortification_plot():
-    """Renders the interactive Plotly chart for the fortification explanation."""
-    st.write("Use the sliders to see how the optimizer finds the best mix of water and makeup solution. The background shows the 'error' surface—the optimizer's goal is to find the path to the darkest blue region (the 'sweet spot').")
-
-    # --- Setup Columns and Sliders ---
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.write("Starting Point:")
-        curr_a = st.slider("Current Conc. A", 0, 150, 80, key="fort_curr_a")
-        curr_b = st.slider("Current Conc. B", 0, 80, 30, key="fort_curr_b")
-    with col2:
-        st.write("Target Point:")
-        target_a = st.slider("Target Conc. A", 100, 200, 120, key="fort_target_a")
-        target_b = st.slider("Target Conc. B", 40, 100, 50, key="fort_target_b")
-    with col3:
-        st.write("Makeup Solution:")
-        make_a = st.slider("Makeup Conc. A", 150, 300, 250, key="fort_make_a")
-        make_b = st.slider("Makeup Conc. B", 80, 200, 100, key="fort_make_b")
-
-    st.write("Tank & Addition Controls:")
-    col1, col2, col3 = st.columns(3)
-    current_volume = col1.slider("Current Volume (L)", 50, 200, 100, key="fort_vol")
-    available_space = col2.slider("Available Space (L)", 10, 100, 50, key="fort_space")
-
-    # User-interactive sliders for water and makeup
-    st.write("Interactive Additions:")
-    col1, col2 = st.columns(2)
-    water_add = col1.slider("Water to Add", 0.0, float(available_space), 10.0, 1.0, key="fort_water")
-    makeup_add = col2.slider("Makeup to Add", 0.0, float(available_space), 20.0, 1.0, key="fort_makeup")
-    if water_add + makeup_add > available_space:
-        st.error("Total addition exceeds available space!")
-
-    # --- Calculations ---
-    # 1. User's current position based on sliders
-    final_vol_user = current_volume + water_add + makeup_add
-    user_pos_a = ((current_volume * curr_a) + (makeup_add * make_a)) / final_vol_user
-    user_pos_b = ((current_volume * curr_b) + (makeup_add * make_b)) / final_vol_user
-
-    # 2. Optimizer's solution
-    from scipy.optimize import minimize
-    def objective(x): # x[0] = water, x[1] = makeup
-        final_vol = current_volume + x[0] + x[1]
-        if final_vol < 1e-9: return 1e9
-        final_a = ((current_volume * curr_a) + (x[1] * make_a)) / final_vol
-        final_b = ((current_volume * curr_b) + (x[1] * make_b)) / final_vol
-        return (final_a - target_a)**2 + (final_b - target_b)**2
-
-    bounds = [(0, available_space), (0, available_space)]
-    constraints = [{'type': 'ineq', 'fun': lambda x: available_space - x[0] - x[1]}]
-    res = minimize(objective, [0, 0], bounds=bounds, constraints=constraints)
-
-    opt_water, opt_makeup = res.x
-    final_vol_opt = current_volume + opt_water + opt_makeup
-    opt_pos_a = ((current_volume * curr_a) + (opt_makeup * make_a)) / final_vol_opt
-    opt_pos_b = ((current_volume * curr_b) + (opt_makeup * make_b)) / final_vol_opt
-
-    # --- Plotting ---
-    fig = go.Figure()
-
-    # 1. Error surface (Contour plot)
-    x = np.linspace(0, make_a + 20, 100)
-    y = np.linspace(0, make_b + 20, 100)
-    X, Y = np.meshgrid(x, y)
-    Z = (X - target_a)**2 + (Y - target_b)**2
-    fig.add_trace(go.Contour(z=Z, x=x, y=y, colorscale='Blues_r', showscale=False, name='Error Surface'))
-
-    # 2. Points of interest
-    points_x = [curr_a, target_a, make_a, user_pos_a, opt_pos_a]
-    points_y = [curr_b, target_b, make_b, user_pos_b, opt_pos_b]
-    texts = ['Start', 'Target', 'Makeup', 'Your Mix', 'Optimal Mix']
-    colors = ['orange', 'green', 'purple', 'red', 'black']
-    fig.add_trace(go.Scatter(x=points_x, y=points_y, mode='markers+text',
-                             marker=dict(size=14, color=colors, symbol=['circle', 'star', 'diamond', 'x', 'cross']),
-                             text=texts, textposition="bottom center", hoverinfo='none'))
-
-    # 3. Lines showing paths
-    # User path
-    fig.add_trace(go.Scatter(x=[curr_a, user_pos_a], y=[curr_b, user_pos_b], mode='lines',
-                             line=dict(color='red', width=2, dash='dash'), name='User Path'))
-    # Optimal path
-    fig.add_trace(go.Scatter(x=[curr_a, opt_pos_a], y=[curr_b, opt_pos_b], mode='lines',
-                             line=dict(color='black', width=3), name='Optimal Path'))
-
-    fig.update_layout(
-        title="Optimal Fortification by Minimizing Error",
-        xaxis_title="Concentration of Chemical A",
-        yaxis_title="Concentration of Chemical B",
-        xaxis=dict(range=[0, make_a + 20]),
-        yaxis=dict(range=[0, make_b + 20]),
-        height=600,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-    )
-    st.plotly_chart(fig, use_container_width=True)
+        st.write(
+            """
+            The optimizer is guaranteed to find the best possible recipe (the lowest point in the valley) that doesn't violate the tank's physical limits.
+            """
+        )
 
