@@ -538,3 +538,90 @@ def render_explanation_tab():
             """
         )
 
+        with st.expander("A Deeper Look at the Math: The Gradient"):
+            st.write(
+                """
+                To understand how the optimizer 'feels the slope', we first need to define our functions. Let:
+                - `w` = volume of **water** to add.
+                - `m` = volume of **makeup** solution to add.
+                - `V_c`, `A_c`, `B_c` = current Volume, Conc. A, and Conc. B.
+                - `A_m`, `B_m` = makeup Conc. A and Conc. B.
+                - `A_t`, `B_t` = target Conc. A and Conc. B.
+
+                **1. Final Concentration Functions:**
+                The final concentration of each chemical is a function of `w` and `m`:
+                """
+            )
+            st.latex(r'''
+                C_{A, \text{final}}(w, m) = \frac{V_c \cdot A_c + m \cdot A_m}{V_c + w + m}
+            ''')
+            st.latex(r'''
+                C_{B, \text{final}}(w, m) = \frac{V_c \cdot B_c + m \cdot B_m}{V_c + w + m}
+            ''')
+            st.write(
+                """
+                **2. The Error Function E(w, m):**
+                This is the function we want to minimize. It's the sum of the squared differences from the target:
+                """
+            )
+            st.latex(r'''
+                E(w, m) = (C_{A, \text{final}}(w, m) - A_t)^2 + (C_{B, \text{final}}(w, m) - B_t)^2
+            ''')
+            st.write(
+                """
+                **3. Finding the Gradient: Partial Derivatives**
+                The gradient is a vector of partial derivatives, `∇E = [∂E/∂w, ∂E/∂m]`. Let's find each part.
+                """
+            )
+            st.markdown("---")
+            st.subheader("Derivative with respect to Water (w)")
+            st.write("First, we find `∂E/∂w` using the **Chain Rule**:")
+            st.latex(r'''
+                \frac{\partial E}{\partial w} =
+                2(C_{A, \text{final}} - A_t) \frac{\partial C_{A, \text{final}}}{\partial w} +
+                2(C_{B, \text{final}} - B_t) \frac{\partial C_{B, \text{final}}}{\partial w}
+            ''')
+            st.write("Now we need to find the partial derivatives of the concentration functions. For `C_A_final`, the numerator has no `w`, so this is a simple **Quotient Rule** derivative:")
+            st.latex(r'''
+                \frac{\partial C_{A, \text{final}}}{\partial w} =
+                \frac{0 \cdot (V_c+w+m) - (V_c A_c + m A_m) \cdot 1}{(V_c+w+m)^2} =
+                - \frac{V_c A_c + m A_m}{(V_c+w+m)^2}
+            ''')
+            st.write("Notice that we can simplify this by recognizing the numerator:")
+            st.latex(r'''
+                 \frac{\partial C_{A, \text{final}}}{\partial w} = - \frac{C_{A, \text{final}}}{V_c+w+m}
+            ''')
+            st.write("The derivative for `C_B_final` is identical in form. Plugging these back into the chain rule gives us the full partial derivative for `w`.")
+            st.markdown("---")
+            st.subheader("Derivative with respect to Makeup (m)")
+            st.write("The process for `∂E/∂m` is similar, but the derivative for the concentration functions is more complex because `m` is in both the numerator and the denominator.")
+            st.latex(r'''
+                \frac{\partial E}{\partial m} =
+                2(C_{A, \text{final}} - A_t) \frac{\partial C_{A, \text{final}}}{\partial m} +
+                2(C_{B, \text{final}} - B_t) \frac{\partial C_{B, \text{final}}}{\partial m}
+            ''')
+            st.write("Using the **Quotient Rule** for `∂C_A_final/∂m`:")
+            st.latex(r'''
+                \frac{\partial C_{A, \text{final}}}{\partial m} =
+                \frac{(A_m)(V_c+w+m) - (V_c A_c + m A_m)(1)}{(V_c+w+m)^2}
+            ''')
+            st.write("This can be simplified to:")
+            st.latex(r'''
+                \frac{\partial C_{A, \text{final}}}{\partial m} =
+                \frac{A_m - C_{A, \text{final}}}{V_c+w+m}
+            ''')
+            st.write("The derivative for `C_B_final` follows the same pattern. These are then plugged back into the chain rule formula to get the full partial derivative for `m`.")
+            st.markdown("---")
+            st.subheader("The Result: The Gradient Vector")
+            st.write("The gradient is the vector of these two partial derivatives:")
+            st.latex(r'''
+                \nabla E(w, m) = \begin{bmatrix} \frac{\partial E}{\partial w} \\ \frac{\partial E}{\partial m} \end{bmatrix}
+            ''')
+            st.write(
+                """
+                This vector points in the direction of the **steepest uphill slope** on our error surface.
+                Since the hiker wants to go downhill to find the valley bottom, the optimizer calculates this gradient at its current location and takes a small step in the **opposite direction (`-∇E`)**.
+
+                This "calculate gradient, take a step" process is repeated until the gradient is zero, which means we have arrived at the bottom of the valley—the point of minimum error and the optimal recipe for our bath.
+                """
+            )
