@@ -10,6 +10,7 @@ import streamlit as st
 from typing import Dict, Any, Optional, List
 import plotly.graph_objects as go
 import math
+import numpy as np
 
 # Import the default values and constants from the config file
 from .config import (
@@ -426,4 +427,201 @@ def display_module7_simulation(results: Dict[str, float], initial_values: Dict[s
             display_gauge("H2O2", final_h2o2, targets['h2o2'], "ml/L", "m7_sand_gauge_h2o2", start_value=initial_values.get("h2o2"), green_zone=[5, 8], tick_interval=1)
 
 
+# =====================================================================================
+# NEW EXPLANATION TAB
+# =====================================================================================
 
+def render_explanation_tab():
+    """
+    Renders the content for the 'How It Works' tab, explaining the
+    optimization algorithms with text-based examples.
+    """
+    st.header("Understanding the Optimization Engine")
+    st.write("""
+        This application uses two primary optimization strategies to calculate the best
+        possible correction for your chemical baths. The strategy chosen depends on the
+        state of your tank's concentrations relative to the targets.
+    """)
+
+    with st.expander("Case 1: Optimal Dilution (When All Concentrations Are High)", expanded=True):
+        st.subheader("The Concept: The Shortest Path Back to the Target Ratio")
+        st.write(
+            """
+            This method is used when **all** of your chemical concentrations are higher than their target values.
+            Instead of just diluting randomly, the calculator finds the most efficient way to bring the
+            concentrations down while perfectly preserving the ideal ratio between the chemicals.
+            """
+        )
+
+        st.subheader("An Intuitive Example")
+        st.write(
+            """
+            Imagine your bath requires Chemical A and Chemical B to be in a perfect **2-to-1 ratio**.
+
+            - **Target State:** 100 ml/L of Chemical A and 50 ml/L of Chemical B. (Ratio is 100:50, which is 2:1)
+            - **Current State:** Your bath measures 180 ml/L of A and 120 ml/L of B. (Ratio is 180:120, which is 3:2)
+
+            Both chemicals are too high, and their ratio is incorrect. A simple dilution with a random amount of water might fix one chemical but leave the other still incorrect. So, how much water should you add?
+            """
+        )
+
+        st.subheader("The Logic: Using Vector Math")
+        st.write(
+            """
+            The calculator treats these concentrations as points, or 'vectors', in a 2D space. The goal is to find the shortest path from the 'Current State' point back to the line that represents the perfect 'Target State' ratio.
+
+            This is done using a mathematical tool called **vector projection**. The logic is as follows:
+
+            1.  **Define Vectors:** We have a 'current' vector `C_current = (180, 120)` and a 'target' vector `C_target = (100, 50)`.
+            2.  **Find the Ideal Dilution Point:** We project the current vector onto the line defined by the target vector. This gives us a new point on that line, let's say `(150, 75)`. Notice that this new point *perfectly* maintains the 2:1 target ratio.
+            3.  **Calculate Water Addition:** The calculator then determines how much water must be added to the current volume to get from the 'Current State' `(180, 120)` to this 'Ideal Dilution Point' `(150, 75)`. This becomes the recommended amount of water to add.
+
+            This method ensures you don't waste chemicals by over-diluting and you hit the ideal chemical ratio in a single, efficient step.
+            """
+        )
+        st.latex(r'''
+            \vec{C}_{\text{ideal}} = \left( \frac{\vec{C}_{\text{current}} \cdot \vec{C}_{\text{target}}}{\|\vec{C}_{\text{target}}\|^2} \right) \vec{C}_{\text{target}}
+        ''')
+
+
+    with st.expander("Case 2: Optimal Fortification (When Any Concentration Is Low)", expanded=True):
+        st.subheader("The Concept: Finding the 'Sweet Spot'")
+        st.write(
+            """
+            This is the more common and complex scenario, used when at least one of your chemical concentrations is below its target. Here, we need to add a mix of water and a concentrated 'makeup' solution. The goal is to find the **perfect recipe** that gets us as close as possible to the target concentrations, without exceeding the tank's volume.
+            """
+        )
+
+        st.subheader("An Intuitive Example: The Hiker in the Valley")
+        st.write(
+            """
+            Imagine you are a hiker standing on the side of a mountain, and your goal is to get to the lowest point in a specific valley.
+
+            - **Your Position:** This is the *current concentration* in your tank.
+            - **The Valley Bottom:** This is the *target concentration*.
+            - **The 'Error' Landscape:** The terrain of the mountain is the 'error surface'. The further you are from the valley bottom, the higher your 'error'.
+            - **The Goal:** Find the shortest, most efficient path to the valley bottom.
+
+            This is what the SciPy optimizer does. It's a "smart hiker".
+            """
+        )
+
+        st.subheader("The Logic: How the 'Hiker' Finds the Path")
+        st.write(
+            """
+            The optimizer doesn't know where the bottom of the valley is. It can only feel the slope of the ground right where it's standing. The process looks like this:
+
+            1.  **Check the Slope:** The optimizer calculates the 'gradient' at its current position. This is the direction of the steepest downhill slope.
+            2.  **Take a Step:** It takes a small step in that downhill direction.
+            3.  **Repeat:** It checks the slope again from its new position and takes another step.
+
+            It repeats this "look-step-look-step" process until it reaches a point where every direction is uphill. That's the bottom of the valley—the point of minimum error and the **optimal recipe**.
+            """
+        )
+
+        st.subheader("The Math: Minimizing the 'Error' Function")
+        st.write(
+            """
+            The 'error' is calculated as the squared distance between the final and target concentrations. The function the optimizer tries to minimize is:
+            """
+        )
+        st.latex(r'''
+            \text{minimize} \quad \sum_{i} (C_{\text{final}, i} - C_{\text{target}, i})^2
+        ''')
+        st.write("The 'hiker' must also stay within a fenced area, which represents the physical constraints of the tank:")
+        st.latex(r'''
+            \text{Volume}_{\text{water}} + \text{Volume}_{\text{makeup}} \leq \text{Available Space}
+        ''')
+        st.write(
+            """
+            The optimizer is guaranteed to find the best possible recipe (the lowest point in the valley) that doesn't violate the tank's physical limits.
+            """
+        )
+
+        with st.expander("A Deeper Look at the Math: The Gradient"):
+            st.write(
+                """
+                To understand how the optimizer 'feels the slope', we first need to define our functions. Let:
+                - `w` = volume of **water** to add.
+                - `m` = volume of **makeup** solution to add.
+                - `V_c`, `A_c`, `B_c` = current Volume, Conc. A, and Conc. B.
+                - `A_m`, `B_m` = makeup Conc. A and Conc. B.
+                - `A_t`, `B_t` = target Conc. A and Conc. B.
+
+                **1. Final Concentration Functions:**
+                The final concentration of each chemical is a function of `w` and `m`:
+                """
+            )
+            st.latex(r'''
+                C_{A, \text{final}}(w, m) = \frac{V_c \cdot A_c + m \cdot A_m}{V_c + w + m}
+            ''')
+            st.latex(r'''
+                C_{B, \text{final}}(w, m) = \frac{V_c \cdot B_c + m \cdot B_m}{V_c + w + m}
+            ''')
+            st.write(
+                """
+                **2. The Error Function E(w, m):**
+                This is the function we want to minimize. It's the sum of the squared differences from the target:
+                """
+            )
+            st.latex(r'''
+                E(w, m) = (C_{A, \text{final}}(w, m) - A_t)^2 + (C_{B, \text{final}}(w, m) - B_t)^2
+            ''')
+            st.write(
+                """
+                **3. Finding the Gradient: Partial Derivatives**
+                The gradient is a vector of partial derivatives, `∇E = [∂E/∂w, ∂E/∂m]`. Let's find each part.
+                """
+            )
+            st.markdown("---")
+            st.subheader("Derivative with respect to Water (w)")
+            st.write("First, we find `∂E/∂w` using the **Chain Rule**:")
+            st.latex(r'''
+                \frac{\partial E}{\partial w} =
+                2(C_{A, \text{final}} - A_t) \frac{\partial C_{A, \text{final}}}{\partial w} +
+                2(C_{B, \text{final}} - B_t) \frac{\partial C_{B, \text{final}}}{\partial w}
+            ''')
+            st.write("Now we need to find the partial derivatives of the concentration functions. For `C_A_final`, the numerator has no `w`, so this is a simple **Quotient Rule** derivative:")
+            st.latex(r'''
+                \frac{\partial C_{A, \text{final}}}{\partial w} =
+                \frac{0 \cdot (V_c+w+m) - (V_c A_c + m A_m) \cdot 1}{(V_c+w+m)^2} =
+                - \frac{V_c A_c + m A_m}{(V_c+w+m)^2}
+            ''')
+            st.write("Notice that we can simplify this by recognizing the numerator:")
+            st.latex(r'''
+                 \frac{\partial C_{A, \text{final}}}{\partial w} = - \frac{C_{A, \text{final}}}{V_c+w+m}
+            ''')
+            st.write("The derivative for `C_B_final` is identical in form. Plugging these back into the chain rule gives us the full partial derivative for `w`.")
+            st.markdown("---")
+            st.subheader("Derivative with respect to Makeup (m)")
+            st.write("The process for `∂E/∂m` is similar, but the derivative for the concentration functions is more complex because `m` is in both the numerator and the denominator.")
+            st.latex(r'''
+                \frac{\partial E}{\partial m} =
+                2(C_{A, \text{final}} - A_t) \frac{\partial C_{A, \text{final}}}{\partial m} +
+                2(C_{B, \text{final}} - B_t) \frac{\partial C_{B, \text{final}}}{\partial m}
+            ''')
+            st.write("Using the **Quotient Rule** for `∂C_A_final/∂m`:")
+            st.latex(r'''
+                \frac{\partial C_{A, \text{final}}}{\partial m} =
+                \frac{(A_m)(V_c+w+m) - (V_c A_c + m A_m)(1)}{(V_c+w+m)^2}
+            ''')
+            st.write("This can be simplified to:")
+            st.latex(r'''
+                \frac{\partial C_{A, \text{final}}}{\partial m} =
+                \frac{A_m - C_{A, \text{final}}}{V_c+w+m}
+            ''')
+            st.write("The derivative for `C_B_final` follows the same pattern. These are then plugged back into the chain rule formula to get the full partial derivative for `m`.")
+            st.markdown("---")
+            st.subheader("The Result: The Gradient Vector")
+            st.write("The gradient is the vector of these two partial derivatives:")
+            st.latex(r'''
+                \nabla E(w, m) = \begin{bmatrix} \frac{\partial E}{\partial w} \\ \frac{\partial E}{\partial m} \end{bmatrix}
+            ''')
+            st.write(
+                """
+                This vector points in the direction of the **steepest uphill slope** on our error surface.
+                Since the hiker wants to go downhill to find the valley bottom, the optimizer calculates this gradient at its current location and takes a small step in the **opposite direction (`-∇E`)**.
+
+                This "calculate gradient, take a step" process is repeated until the gradient is zero, which means we have arrived at the bottom of the valley—the point of minimum error and the optimal recipe for our bath.
+                """
+            )

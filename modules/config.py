@@ -22,3 +22,4 @@ MODULE7_TARGET_H2O2_ML_L: float = 6.5
 APP_TITLE: str = "Chemistry Tank Management"
 TAB1_TITLE: str = "Makeup Tank Refill"
 TAB2_TITLE: str = "Module 3 Corrector"
+TAB6_TITLE: str = "💡 How It Works: Optimization"
