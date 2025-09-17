@@ -9,7 +9,7 @@ import streamlit as st
 
 # Import all configuration constants and modules
 from modules.config import (
-    APP_TITLE, TAB1_TITLE,
+    APP_TITLE, TAB1_TITLE, TAB6_TITLE,
     MODULE3_TOTAL_VOLUME,
     MODULE7_TOTAL_VOLUME, MODULE7_TARGET_CONDITION_ML_L,
     MODULE7_TARGET_CU_ETCH_G_L, MODULE7_TARGET_H2O2_ML_L,
@@ -26,6 +26,7 @@ from modules.ui import (
     render_module7_sandbox_ui,
     display_module7_correction,
     display_module7_simulation,
+    render_explanation_tab,
 )
 from modules.calculation import (
     calculate_refill_recipe,
@@ -43,13 +44,15 @@ def main():
     st.title(APP_TITLE)
     st.markdown("---")
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab_titles = [
         TAB1_TITLE,
         "Module 3 Corrector",
         "Module 3 Sandbox",
         "Module 7 Corrector",
         "Module 7 Sandbox",
-    ])
+        TAB6_TITLE,
+    ]
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(tab_titles)
 
     # --- Tab 1: Makeup Tank Refill ---
     with tab1:
@@ -174,6 +177,10 @@ def main():
                 "h2o2": sandbox_inputs['target_h2o2']
             }
         )
+
+    # --- Tab 6: How It Works ---
+    with tab6:
+        render_explanation_tab()
 
 
 if __name__ == "__main__":
