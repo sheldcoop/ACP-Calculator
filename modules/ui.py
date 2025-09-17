@@ -565,8 +565,8 @@ def _render_fortification_plot():
     # User-interactive sliders for water and makeup
     st.write("Interactive Additions:")
     col1, col2 = st.columns(2)
-    water_add = col1.slider("Water to Add", 0.0, available_space, 10.0, 1.0, key="fort_water")
-    makeup_add = col2.slider("Makeup to Add", 0.0, available_space, 20.0, 1.0, key="fort_makeup")
+    water_add = col1.slider("Water to Add", 0.0, float(available_space), 10.0, 1.0, key="fort_water")
+    makeup_add = col2.slider("Makeup to Add", 0.0, float(available_space), 20.0, 1.0, key="fort_makeup")
     if water_add + makeup_add > available_space:
         st.error("Total addition exceeds available space!")
 
